@@ -1,48 +1,48 @@
 /**
  * Maktabah Maftoohah Korpus Al-Quran - Analytics Module (analytics.js)
- * Google Analytics 4 (GA4) integration with SPA virtual pageview tracking
- * and specialized linguistic/grammatical corpus metrics.
+ * Google Tag Manager (GTM) and Google Analytics 4 (GA4) integration
+ * with SPA virtual pageview tracking and specialized linguistic/grammatical corpus metrics.
  * 
  * Invariants:
  * - Zero external build dependencies (Vanilla ES6).
  * - Offline-first resilient: fails silently when offline without throwing errors.
  * - Respects Do Not Track (DNT) header.
- * - Privacy-respecting: IP anonymization enabled.
+ * - Dual GTM dataLayer & gtag compatibility.
  */
 
-// Default Measurement ID placeholder (Replace with production GA4 ID or configure in localStorage)
-const DEFAULT_MEASUREMENT_ID = 'G-XXXXXXXXXX';
+// Google Tag Manager Container ID
+const DEFAULT_CONTAINER_ID = 'GTM-KDFDGX45';
 
 class AnalyticsService {
   constructor() {
     this.initialized = false;
-    this.measurementId = null;
+    this.containerId = null;
     this.lastTrackedPath = null;
   }
 
   /**
-   * Retrieves the active Measurement ID (localStorage override or default placeholder).
+   * Retrieves the active Container/Measurement ID (localStorage override or default).
    */
-  getMeasurementId() {
+  getContainerId() {
     try {
       const stored = localStorage.getItem('maktabah_ga_id');
       if (stored && stored.trim()) return stored.trim();
     } catch {
       // ignore localStorage restriction
     }
-    return DEFAULT_MEASUREMENT_ID;
+    return DEFAULT_CONTAINER_ID;
   }
 
   /**
-   * Initialize GA4 snippet dynamically if measurement ID is valid and not a placeholder.
+   * Initialize GTM/GA4 snippet dynamically if container ID is valid and not a placeholder.
    */
   init(customId = null) {
     if (this.initialized) return;
 
-    this.measurementId = customId || this.getMeasurementId();
+    this.containerId = customId || this.getContainerId();
 
     // Do nothing if placeholder or unset
-    if (!this.measurementId || this.measurementId === 'G-XXXXXXXXXX' || !this.measurementId.startsWith('G-')) {
+    if (!this.containerId || this.containerId === 'G-XXXXXXXXXX') {
       return;
     }
 
@@ -54,61 +54,87 @@ class AnalyticsService {
       }
     }
 
-    // Avoid network request when offline
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      if (typeof window !== 'undefined') {
-        window.addEventListener('online', () => this.init(this.measurementId), { once: true });
+    // Ensure dataLayer & gtag exist
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = window.gtag || function() {
+      window.dataLayer.push(arguments);
+    };
+
+    // Check if GTM or GA4 is already embedded in the DOM via static script tag
+    const existingScript = document.querySelector('script[src*="googletagmanager.com/gtm.js"], script[src*="googletagmanager.com/gtag/js"]');
+
+    if (!existingScript) {
+      // Avoid network request when offline
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        if (typeof window !== 'undefined') {
+          window.addEventListener('online', () => this.init(this.containerId), { once: true });
+        }
+        return;
       }
-      return;
+
+      try {
+        const isGtm = this.containerId.startsWith('GTM-');
+        const scriptUrl = isGtm
+          ? `https://www.googletagmanager.com/gtm.js?id=${this.containerId}`
+          : `https://www.googletagmanager.com/gtag/js?id=${this.containerId}`;
+
+        if (!isGtm) {
+          window.gtag('js', new Date());
+          window.gtag('config', this.containerId, {
+            send_page_view: false,
+            anonymize_ip: true,
+            cookie_flags: 'SameSite=None;Secure'
+          });
+        }
+
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = scriptUrl;
+        script.onerror = () => {};
+        document.head.appendChild(script);
+      } catch {
+        // Safe fail
+      }
     }
 
-    try {
-      window.dataLayer = window.dataLayer || [];
-      window.gtag = window.gtag || function() {
-        window.dataLayer.push(arguments);
-      };
+    this.initialized = true;
 
-      window.gtag('js', new Date());
-      // send_page_view: false allows explicit SPA router pageview tracking
-      window.gtag('config', this.measurementId, {
-        send_page_view: false,
-        anonymize_ip: true,
-        cookie_flags: 'SameSite=None;Secure'
-      });
-
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${this.measurementId}`;
-      script.onerror = () => {
-        // Offline or blocked by privacy extensions - fail silently
-      };
-      document.head.appendChild(script);
-
-      this.initialized = true;
-
-      // Track initial route once DOM is ready
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => this.trackCurrentRoute());
-      } else {
-        this.trackCurrentRoute();
-      }
-    } catch {
-      // Safe fail
+    // Track initial route once DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => this.trackCurrentRoute());
+    } else {
+      this.trackCurrentRoute();
     }
   }
 
   /**
-   * Dispatches custom event to GA4 safely.
+   * Dispatches custom event to GTM dataLayer and GA4 safely.
    */
   trackEvent(eventName, params = {}) {
-    if (!this.initialized || typeof window.gtag !== 'function') return;
+    const payload = {
+      ...params,
+      app_name: 'Maktabah Maftoohah Korpus Al-Quran'
+    };
+
+    // Push event to GTM dataLayer
     try {
-      window.gtag('event', eventName, {
-        ...params,
-        app_name: 'Maktabah Maftoohah Korpus Al-Quran'
-      });
+      if (typeof window !== 'undefined' && Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({
+          event: eventName,
+          ...payload
+        });
+      }
     } catch {
       // Silent error handling for offline/sandboxed contexts
+    }
+
+    // Also call gtag if present
+    if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+      try {
+        window.gtag('event', eventName, payload);
+      } catch {
+        // Silent
+      }
     }
   }
 
@@ -116,22 +142,37 @@ class AnalyticsService {
    * Tracks a virtual pageview for SPA hash routes (e.g. /korpus-quran/#root/ر ح م).
    */
   trackPageView(pagePath, pageTitle) {
-    if (!this.initialized || typeof window.gtag !== 'function') return;
-
     const path = pagePath || (window.location.pathname + (window.location.hash || '#home'));
     if (path === this.lastTrackedPath) return;
     this.lastTrackedPath = path;
 
     const title = pageTitle || document.title || 'Maktabah Maftoohah Korpus Al-Quran';
+    const payload = {
+      page_path: path,
+      page_title: title,
+      page_location: window.location.href,
+      app_name: 'Maktabah Maftoohah Korpus Al-Quran'
+    };
 
+    // Push to GTM dataLayer
     try {
-      window.gtag('event', 'page_view', {
-        page_path: path,
-        page_title: title,
-        page_location: window.location.href
-      });
+      if (typeof window !== 'undefined' && Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({
+          event: 'page_view',
+          ...payload
+        });
+      }
     } catch {
       // Safe fail
+    }
+
+    // Dispatch via gtag
+    if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+      try {
+        window.gtag('event', 'page_view', payload);
+      } catch {
+        // Safe fail
+      }
     }
   }
 
