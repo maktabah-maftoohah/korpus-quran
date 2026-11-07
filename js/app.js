@@ -23,10 +23,24 @@ class CorpusApp {
       }
 
       this.setupHeaderEvents();
-      [this.surahs, this.rootsIndex] = await Promise.all([
+      const [rawSurahs, rootsIdx] = await Promise.all([
         corpusStore.fetchSurahs(),
         corpusStore.fetchRootsIndex()
       ]);
+
+      this.surahs = rawSurahs.map(s => ({
+        ...s,
+        id: s.number ?? s.id,
+        number: s.number ?? s.id,
+        arabic: s.name_arabic || s.arabic || '',
+        name_arabic: s.name_arabic || s.arabic || '',
+        name_ms: s.name_ms || s.name_latin || '',
+        name_latin: s.name_latin || '',
+        transliteration: s.name_latin || s.transliteration || '',
+        total_verses: s.total_ayahs ?? s.total_verses ?? 0,
+        total_ayahs: s.total_ayahs ?? s.total_verses ?? 0
+      }));
+      this.rootsIndex = rootsIdx;
 
       window.addEventListener('hashchange', () => this.handleRouting());
       this.handleRouting();
@@ -295,8 +309,8 @@ class CorpusApp {
 
       <div class="concordance-list">
         ${rootDetail.occurrences.map(occ => {
-          const sObj = this.surahs.find(s => s.id === occ.s);
-          const sName = sObj ? sObj.name_ms || sObj.transliteration : `Surah ${occ.s}`;
+          const sObj = this.surahs.find(s => (s.number || s.id) === occ.s);
+          const sName = sObj ? (sObj.name_ms || sObj.name_latin || sObj.transliteration) : `Surah ${occ.s}`;
           const transText = basmeih?.[String(occ.s)]?.[String(occ.a)] || '';
 
           return `
@@ -339,7 +353,7 @@ class CorpusApp {
 
     const [token, sObj, arSurah, basmeih] = await Promise.all([
       corpusStore.getWordToken(s, a, p),
-      this.surahs.find(item => item.id === s),
+      this.surahs.find(item => (item.number || item.id) === s),
       corpusStore.fetchArabicSurah(s),
       corpusStore.fetchBasmeih()
     ]);
@@ -356,7 +370,7 @@ class CorpusApp {
     }
 
     const report = generateGrammarReport(token, s, a);
-    const sName = sObj ? sObj.name_ms || sObj.transliteration : `Surah ${s}`;
+    const sName = sObj ? (sObj.name_ms || sObj.name_latin || sObj.transliteration) : `Surah ${s}`;
     const fullAyahArabic = arSurah?.[String(a)]?.uthmani || '';
     const fullAyahBasmeih = basmeih?.[String(s)]?.[String(a)] || '';
 
@@ -475,27 +489,34 @@ class CorpusApp {
       </div>
 
       <div class="roots-grid">
-        ${this.surahs.map(s => `
-          <a href="#surah/${s.id}" class="root-card">
+        ${this.surahs.map(s => {
+          const sNum = s.number || s.id;
+          const sArabic = s.name_arabic || s.arabic || '';
+          const sName = s.name_ms || s.name_latin || s.transliteration || `Surah ${sNum}`;
+          const sVerses = s.total_ayahs || s.total_verses || 0;
+          return `
+          <a href="#surah/${sNum}" class="root-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-weight: 700; color: var(--accent-gold); font-size: 0.9rem;">#${s.id}</span>
-              <span class="root-ar" style="font-size: 1.5rem;">${s.arabic}</span>
+              <span style="font-weight: 700; color: var(--accent-gold); font-size: 0.9rem;">#${sNum}</span>
+              <span class="root-ar" style="font-size: 1.5rem;">${sArabic}</span>
             </div>
             <div style="font-weight: 600; color: #ffffff; margin-top: 0.4rem;">
-              ${s.name_ms || s.transliteration}
+              ${sName}
             </div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-              ${s.total_verses} ayat &bull; ${s.revelation_type}
+              ${sVerses} ayat &bull; ${s.revelation_type || ''}
             </div>
           </a>
-        `).join('')}
+        `;}).join('')}
       </div>
     `;
   }
 
   async renderSurahExplorer(sNum) {
-    const sObj = this.surahs.find(s => s.id === sNum);
-    const sName = sObj ? sObj.name_ms || sObj.transliteration : `Surah ${sNum}`;
+    const sObj = this.surahs.find(s => (s.number || s.id) === sNum) || {};
+    const sName = sObj.name_ms || sObj.name_latin || sObj.transliteration || `Surah ${sNum}`;
+    const sArabic = sObj.name_arabic || sObj.arabic || '';
+    const sVerses = sObj.total_ayahs || sObj.total_verses || 0;
 
     this.viewContainer.innerHTML = `
       <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
@@ -508,7 +529,7 @@ class CorpusApp {
     this.viewContainer.innerHTML = `
       <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
         <a href="#surahs" class="btn-action">&larr; Kembali ke Daftar Surah</a>
-        <h2 class="section-title">${sName} (${sObj.arabic}) &bull; ${sObj.total_verses} Ayat</h2>
+        <h2 class="section-title">${sName} ${sArabic ? `(${sArabic})` : ''} &bull; ${sVerses} Ayat</h2>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 1.5rem;">

@@ -120,11 +120,27 @@ async function runTests() {
     const grammarCards = await page.$$('.grammar-card');
     assert(grammarCards.length >= 4, `4 kad tatabahasa & I'rab lengkap dipaparkan`);
 
-    console.log('\n[TEST 5] Paparan Daftar Surah (#surahs)');
+    console.log('\n[TEST 5] Paparan Daftar Surah (#surahs) & Tiada Nilai "undefined"');
     await page.goto(`http://localhost:${PORT}/index.html#surahs`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.root-card');
     const surahCards = await page.$$('.root-card');
     assert(surahCards.length === 114, `Tepat 114 Surah dipaparkan dalam direktori, ditemui: ${surahCards.length}`);
+
+    const firstCardText = await surahCards[0].textContent();
+    assert(firstCardText.includes('#1') && firstCardText.includes('Al-Fatihah') && firstCardText.includes('7 ayat'), 
+      `Kad Surah 1 sah (#1, Al-Fatihah, 7 ayat): "${firstCardText.replace(/\s+/g, ' ').trim()}"`);
+    assert(!firstCardText.includes('undefined'), `Kad Surah 1 TIADA teks "undefined"`);
+
+    const pageContent = await page.content();
+    assert(!pageContent.includes('undefined'), `Seluruh halaman #surahs bebas daripada teks "undefined"`);
+
+    console.log('\n[TEST 5B] Peneroka Surah (#surah/1)');
+    await page.goto(`http://localhost:${PORT}/index.html#surah/1`, { waitUntil: 'networkidle' });
+    const surahHeader = await page.$('.section-title');
+    const surahHeaderText = await surahHeader.textContent();
+    assert(surahHeaderText.includes('Al-Fatihah') && surahHeaderText.includes('7 Ayat'), 
+      `Peneroka Surah 1 sah: "${surahHeaderText.trim()}"`);
+    assert(!surahHeaderText.includes('undefined'), `Peneroka Surah 1 bebas daripada "undefined"`);
 
     console.log('\n[TEST 6] Suis Bahasa (MY / EN)');
     const langBtn = await page.$('#btnLangToggle');
