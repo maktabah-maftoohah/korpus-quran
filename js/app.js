@@ -77,6 +77,10 @@ class CorpusApp {
       const key = el.getAttribute('data-i18n');
       el.textContent = i18n.t(key);
     });
+    const headerQuranLink = document.getElementById('headerQuranLink');
+    if (headerQuranLink) {
+      headerQuranLink.href = `https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}`;
+    }
   }
 
   updateNavActive(navId) {
@@ -90,7 +94,19 @@ class CorpusApp {
   }
 
   async handleRouting() {
-    const hash = window.location.hash.slice(1).trim() || 'home';
+    let rawHash = window.location.hash.slice(1).trim() || 'home';
+    const langMatch = rawHash.match(/[?&]lang=(en|ms)/);
+    if (langMatch) {
+      const requestedLang = langMatch[1];
+      if (requestedLang !== i18n.currentLang) {
+        i18n.setLang(requestedLang);
+        const langBtn = document.getElementById('btnLangToggle');
+        if (langBtn) langBtn.textContent = requestedLang === 'ms' ? 'EN' : 'MY';
+        this.updateStaticTranslations();
+      }
+      rawHash = rawHash.replace(/[?&]lang=(en|ms)/, '').replace(/\?$/, '');
+    }
+    const hash = rawHash || 'home';
     this.currentRoute = hash;
 
     if (hash === 'home') {
@@ -330,7 +346,7 @@ class CorpusApp {
                 <a href="#word/${occ.s}:${occ.a}:${occ.p}" class="concordance-ref">
                   ${sName} (${occ.s}:${occ.a}) &bull; ${i18n.t('wordPosition', { pos: occ.p })}
                 </a>
-                <a href="https://maktabah-maftoohah.github.io/al-quran/#surah/${occ.s}/${occ.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+                <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${occ.s}/${occ.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
                   ${i18n.t('readAyahBtn')}
                 </a>
               </div>
@@ -401,7 +417,7 @@ class CorpusApp {
           <button class="btn-action btn-primary" onclick="window.corpusApp.playPronounce(${s}, ${a}, ${p})">
             🔊 ${i18n.t('audioPronounce')}
           </button>
-          <a href="https://maktabah-maftoohah.github.io/al-quran/#surah/${s}/${a}" target="_blank" rel="noopener noreferrer" class="btn-action">
+          <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${s}/${a}" target="_blank" rel="noopener noreferrer" class="btn-action">
             ${i18n.t('viewInQuranApp')}
           </a>
           ${token.root ? `
@@ -556,7 +572,7 @@ class CorpusApp {
           <div class="concordance-item">
             <div class="concordance-header">
               <span style="font-weight: 700; color: var(--accent-gold);">${i18n.t('verseBadge', { ayah: aStr })}</span>
-              <a href="https://maktabah-maftoohah.github.io/al-quran/#surah/${sNum}/${aStr}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+              <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${sNum}/${aStr}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
                 ${i18n.t('openInQuranApp')}
               </a>
             </div>

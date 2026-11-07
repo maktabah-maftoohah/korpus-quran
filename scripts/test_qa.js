@@ -209,6 +209,14 @@ async function runTests() {
     assert(firstEnCardText.includes('verses') && firstEnCardText.includes('Meccan'), 
       `Kad Surah dalam EN pamer 'verses • Meccan': "${firstEnCardText.replace(/\s+/g, ' ').trim()}"`);
 
+    console.log('\n[TEST 9] Sinkronisasi Bahasa Merentasi Projek (?lang=en dan ?lang=ms)');
+    await page.goto(`http://localhost:${PORT}/index.html?lang=en#word/1:1:1`, { waitUntil: 'networkidle' });
+    const coldTitle = await page.title();
+    assert(coldTitle.includes('Quranic Linguistic Corpus'), `Buka terus dengan ?lang=en memaparkan tajuk EN: "${coldTitle}"`);
+    const coldHeaderLink = await page.$('#headerQuranLink');
+    const coldHeaderHref = await coldHeaderLink.getAttribute('href');
+    assert(coldHeaderHref.includes('lang=en'), `Pautan kembali ke Al-Quran membawa parameter lang=en: "${coldHeaderHref}"`);
+
     console.log('\n' + '='.repeat(50));
     console.log(`JUMLAH UJIAN: ${passed + failed}`);
     console.log(`LULUS: ${passed}`);

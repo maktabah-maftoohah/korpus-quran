@@ -138,7 +138,48 @@ export const translations = {
 
 class I18nEngine {
   constructor() {
-    this.lang = localStorage.getItem('mm_korpus_lang') || 'ms';
+    this.lang = this.resolveInitialLang();
+  }
+
+  resolveInitialLang() {
+    // 1. Check URL query search parameter ?lang=en|ms
+    try {
+      if (typeof window !== 'undefined' && window.location) {
+        const searchParams = new URLSearchParams(window.location.search);
+        const qLang = searchParams.get('lang');
+        if (qLang === 'en' || qLang === 'ms') {
+          localStorage.setItem('mm_korpus_lang', qLang);
+          return qLang;
+        }
+
+        // 2. Check hash query param if query was embedded in hash (e.g. #word/1:1:1?lang=en or &lang=en)
+        const hash = window.location.hash || '';
+        const match = hash.match(/[?&]lang=(en|ms)/);
+        if (match) {
+          localStorage.setItem('mm_korpus_lang', match[1]);
+          return match[1];
+        }
+      }
+    } catch {}
+
+    // 3. Fallback to localStorage 'mm_korpus_lang'
+    try {
+      const stored = localStorage.getItem('mm_korpus_lang');
+      if (stored === 'en' || stored === 'ms') {
+        return stored;
+      }
+
+      // 4. Fallback to shared maktabah_quran_settings if on same origin
+      const qSettings = localStorage.getItem('maktabah_quran_settings');
+      if (qSettings) {
+        const parsed = JSON.parse(qSettings);
+        if (parsed && (parsed.language === 'en' || parsed.language === 'ms')) {
+          return parsed.language;
+        }
+      }
+    } catch {}
+
+    return 'ms';
   }
 
   get currentLang() {
