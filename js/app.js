@@ -6,6 +6,7 @@
 import { corpusStore } from './store.js';
 import { generateGrammarReport } from './grammar.js';
 import { i18n } from './i18n.js';
+import { SEMANTIC_THEMES } from './themes.js';
 
 class CorpusApp {
   constructor() {
@@ -112,6 +113,23 @@ class CorpusApp {
     if (hash === 'home') {
       this.updateNavActive('home');
       this.renderHome();
+    } else if (hash.startsWith('compare')) {
+      this.updateNavActive('compare');
+      let r1 = '';
+      let r2 = '';
+      if (hash.startsWith('compare/')) {
+        const parts = hash.slice(8).split('/');
+        r1 = decodeURIComponent(parts[0] || '');
+        r2 = decodeURIComponent(parts[1] || '');
+      } else if (hash.includes('?')) {
+        const qParams = new URLSearchParams(hash.split('?')[1]);
+        r1 = qParams.get('root1') || '';
+        r2 = qParams.get('root2') || '';
+      }
+      this.renderCompareView(r1, r2);
+    } else if (hash.startsWith('learn') || hash.startsWith('flashcards') || hash.startsWith('quiz')) {
+      this.updateNavActive('learn');
+      this.renderLearnView();
     } else if (hash.startsWith('roots')) {
       this.updateNavActive('roots');
       this.renderRootsView();
@@ -234,6 +252,8 @@ class CorpusApp {
   renderRootsView() {
     const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
     const initialQuery = urlParams.get('q') || '';
+    const isEn = i18n.currentLang === 'en';
+    let activeThemeId = 'all';
 
     this.viewContainer.innerHTML = `
       <div class="section-title-bar">
@@ -245,8 +265,25 @@ class CorpusApp {
         </div>
       </div>
 
-      <div class="search-wrapper" style="margin: 0 0 1.5rem 0; max-width: 100%;">
+      <div class="search-wrapper" style="margin: 0 0 1rem 0; max-width: 100%;">
         <input type="text" id="rootFilterInput" class="search-input" placeholder="${i18n.t('filterPlaceholder')}" value="${initialQuery}">
+      </div>
+
+      <!-- Feature 6: Thematic Semantic Filter Pills -->
+      <div style="margin-bottom: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">
+        ${i18n.t('themeFilterLabel')}
+      </div>
+      <div class="theme-pills-row" id="themePillsRow">
+        ${SEMANTIC_THEMES.map(th => {
+          const name = isEn ? th.name_en : th.name_ms;
+          const isActive = th.id === activeThemeId ? 'active' : '';
+          return `
+            <button class="theme-pill ${isActive}" data-theme="${th.id}">
+              <span>${th.icon}</span>
+              <span>${name}</span>
+            </button>
+          `;
+        }).join('')}
       </div>
 
       <div id="rootsGridTarget" class="roots-grid"></div>
@@ -254,11 +291,17 @@ class CorpusApp {
 
     const filterInput = document.getElementById('rootFilterInput');
     const target = document.getElementById('rootsGridTarget');
+    const themePillsRow = document.getElementById('themePillsRow');
 
     const updateFilter = () => {
       const q = filterInput.value.trim().toLowerCase();
       const qClean = q.replace(/\s+/g, '');
+      const themeObj = SEMANTIC_THEMES.find(t => t.id === activeThemeId);
+
       const filtered = this.rootsIndex.filter(r => {
+        if (themeObj && themeObj.id !== 'all') {
+          if (!themeObj.roots.includes(r.root)) return false;
+        }
         if (!q) return true;
         return (
           r.root.includes(q) ||
@@ -275,6 +318,17 @@ class CorpusApp {
         target.innerHTML = filtered.slice(0, 150).map(r => this.renderRootCardHtml(r)).join('');
       }
     };
+
+    if (themePillsRow) {
+      themePillsRow.querySelectorAll('.theme-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          themePillsRow.querySelectorAll('.theme-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeThemeId = btn.getAttribute('data-theme') || 'all';
+          updateFilter();
+        });
+      });
+    }
 
     filterInput.addEventListener('input', updateFilter);
     updateFilter();
@@ -307,6 +361,35 @@ class CorpusApp {
     const meanings = meaningsList.join(', ') || '—';
     const lemmas = (rootDetail.lemmas || []).join(' • ') || '—';
 
+    // Calculate Makkiyyah vs Madaniyyah & Top Surahs
+    let meccanCount = 0;
+    let medinanCount = 0;
+    const surahCounts = {};
+
+    rootDetail.occurrences.forEach(occ => {
+      const sObj = this.surahs.find(s => (s.number || s.id) === occ.s);
+      const isMedinan = sObj && (sObj.revelation_type === 'Medinan');
+      if (isMedinan) {
+        medinanCount++;
+      } else {
+        meccanCount++;
+      }
+      surahCounts[occ.s] = (surahCounts[occ.s] || 0) + 1;
+    });
+
+    const totalOcc = rootDetail.occurrences.length || 1;
+    const meccanPct = Math.round((meccanCount / totalOcc) * 100);
+    const medinanPct = 100 - meccanPct;
+
+    const topSurahsList = Object.entries(surahCounts)
+      .map(([sId, cnt]) => {
+        const sObj = this.surahs.find(s => (s.number || s.id) === parseInt(sId, 10));
+        const sName = sObj ? (isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin)) : `Surah ${sId}`;
+        return { sId: parseInt(sId, 10), name: sName, count: cnt };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
     this.viewContainer.innerHTML = `
       <div style="margin-bottom: 1.5rem;">
         <a href="#roots" class="btn-action">${i18n.t('backToRoots')}</a>
@@ -322,6 +405,39 @@ class CorpusApp {
         </div>
       </div>
 
+      <!-- Feature 1: Distribution Card -->
+      <div class="dist-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <strong style="color: var(--accent-gold); font-size: 0.95rem;">📊 ${i18n.t('rootDistribution')}</strong>
+          <span style="font-size: 0.8rem; color: var(--text-muted);">${rootDetail.count} ${i18n.t('occurrencesInQuran')}</span>
+        </div>
+
+        <div class="dist-meter-container">
+          <div class="dist-meter">
+            ${meccanCount > 0 ? `<div class="dist-seg-meccan" style="width: ${meccanPct}%;" title="Makkiyyah: ${meccanCount} (${meccanPct}%)">🕌 ${meccanPct}%</div>` : ''}
+            ${medinanCount > 0 ? `<div class="dist-seg-medinan" style="width: ${medinanPct}%;" title="Madaniyyah: ${medinanCount} (${medinanPct}%)">🌴 ${medinanPct}%</div>` : ''}
+          </div>
+          <div class="dist-labels">
+            <span>🕌 ${i18n.t('meccanRatio')}: <strong>${meccanCount}</strong> (${meccanPct}%)</span>
+            <span>🌴 ${i18n.t('medinanRatio')}: <strong>${medinanCount}</strong> (${medinanPct}%)</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.35rem;">
+            ${i18n.t('topSurahs')}:
+          </div>
+          <div class="dist-surah-chips">
+            ${topSurahsList.map(item => `
+              <a href="#surah/${item.sId}" class="dist-chip">
+                <span>${item.name}</span>
+                <span class="dist-chip-count">${item.count}</span>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
       <div class="grammar-card" style="margin-bottom: 2rem;">
         <div class="grammar-card-label">${i18n.t('rootLemmas')}</div>
         <div style="font-family: var(--font-arabic); font-size: 1.3rem; color: var(--accent-gold); margin-top: 0.5rem; line-height: 1.8;">
@@ -331,7 +447,9 @@ class CorpusApp {
 
       <div class="section-title-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
         <h3 class="section-title">${i18n.t('concordanceTitle')} (<span id="concordanceCount">${rootDetail.occurrences.length}</span>)</h3>
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <a href="#compare?root1=${encodeURIComponent(rootDetail.root)}" class="btn-action" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${i18n.t('compareAction')}</a>
+          <button class="btn-action" id="btnPrintSheet" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${i18n.t('printSheetBtn')}</button>
           <button class="btn-action" id="btnExportCsv" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${i18n.t('exportCsvBtn')}</button>
           <button class="btn-action" id="btnExportJson" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${i18n.t('exportJsonBtn')}</button>
         </div>
@@ -348,6 +466,50 @@ class CorpusApp {
 
       <div class="concordance-list" id="concordanceContainer">
         ${this.renderConcordanceItemsHtml(rootDetail.occurrences, translations, isEn)}
+      </div>
+
+      <!-- Feature 4: Classical Arabic Lexicons Integration -->
+      <div style="margin-top: 2.5rem;">
+        <div class="section-title-bar">
+          <div>
+            <h3 class="section-title">📚 ${i18n.t('lexiconsTitle')}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-top: 0.2rem;">
+              ${i18n.t('lexiconsSubtitle')}
+            </p>
+          </div>
+        </div>
+
+        <div class="lexicon-grid">
+          <div class="lexicon-card">
+            <div>
+              <div class="lexicon-card-title">📖 ${i18n.t('laneLexicon')}</div>
+              <div class="lexicon-card-desc">${i18n.t('laneDesc')}</div>
+            </div>
+            <a href="https://ejtaal.net/aa/#hw4=${rootDetail.root_clean},ll=${rootDetail.root_clean}" target="_blank" rel="noopener noreferrer" class="btn-action" style="text-align: center; font-size: 0.8rem; margin-top: 0.5rem;">
+              ${i18n.t('openLexicon')}
+            </a>
+          </div>
+
+          <div class="lexicon-card">
+            <div>
+              <div class="lexicon-card-title">📜 ${i18n.t('lisanAlArab')}</div>
+              <div class="lexicon-card-desc">${i18n.t('lisanDesc')}</div>
+            </div>
+            <a href="https://www.almaany.com/ar/dict/ar-ar/${encodeURIComponent(rootDetail.root_clean)}/" target="_blank" rel="noopener noreferrer" class="btn-action" style="text-align: center; font-size: 0.8rem; margin-top: 0.5rem;">
+              ${i18n.t('openLexicon')}
+            </a>
+          </div>
+
+          <div class="lexicon-card">
+            <div>
+              <div class="lexicon-card-title">🏛️ ${i18n.t('mujamWasit')}</div>
+              <div class="lexicon-card-desc">${i18n.t('wasitDesc')}</div>
+            </div>
+            <a href="https://www.almaany.com/ar/dict/ar-ar/${encodeURIComponent(rootDetail.root_clean)}/?c=%D8%A7%D9%84%D9%85%D8%B9%D8%AC%D9%85+%D8%A7%D9%84%D9%88%D8%B3%D9%8A%D8%B7" target="_blank" rel="noopener noreferrer" class="btn-action" style="text-align: center; font-size: 0.8rem; margin-top: 0.5rem;">
+              ${i18n.t('openLexicon')}
+            </a>
+          </div>
+        </div>
       </div>
     `;
 
@@ -389,6 +551,10 @@ class CorpusApp {
     if (btnJson) {
       btnJson.addEventListener('click', () => this.exportRootJson(rootDetail));
     }
+    const btnPrint = document.getElementById('btnPrintSheet');
+    if (btnPrint) {
+      btnPrint.addEventListener('click', () => window.print());
+    }
   }
 
   renderConcordanceItemsHtml(occurrences, translations, isEn) {
@@ -423,6 +589,7 @@ class CorpusApp {
               <a href="#word/${occ.s}:${occ.a}:${occ.p}" class="concordance-ref">
                 ${sName} (${occ.s}:${occ.a}) &bull; ${i18n.t('wordPosition', { pos: occ.p })}
               </a>
+              <button class="btn-action" style="padding: 0.12rem 0.4rem; font-size: 0.72rem;" title="${i18n.t('audioPronounce')}" onclick="window.corpusApp.playPronounce(${occ.s}, ${occ.a}, ${occ.p}, this)">🔊</button>
               ${sarfBadgesHtml}
             </div>
             <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${occ.s}/${occ.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
@@ -491,7 +658,7 @@ class CorpusApp {
         <div class="word-gloss-display">"${report.gloss}"</div>
 
         <div class="word-actions-row">
-          <button class="btn-action btn-primary" onclick="window.corpusApp.playPronounce(${s}, ${a}, ${p})">
+          <button class="btn-action btn-primary" onclick="window.corpusApp.playPronounce(${s}, ${a}, ${p}, this)">
             🔊 ${i18n.t('audioPronounce')}
           </button>
           <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${s}/${a}" target="_blank" rel="noopener noreferrer" class="btn-action">
@@ -654,13 +821,27 @@ class CorpusApp {
     `;
   }
 
-  playPronounce(s, a, p) {
+  playPronounce(s, a, p, triggerEl = null) {
     const sStr = String(s).padStart(3, '0');
     const aStr = String(a).padStart(3, '0');
     const pStr = String(p).padStart(3, '0');
     const audioUrl = `https://audio.qurancdn.com/wbw/${sStr}_${aStr}_${pStr}.mp3`;
+    
+    if (triggerEl) {
+      triggerEl.classList.add('playing');
+    }
+
     const audio = new Audio(audioUrl);
+    audio.onended = () => {
+      if (triggerEl) triggerEl.classList.remove('playing');
+    };
+    audio.onerror = (e) => {
+      if (triggerEl) triggerEl.classList.remove('playing');
+      console.warn('Audio sebutan tidak tersedia:', audioUrl, e);
+    };
+
     audio.play().catch(e => {
+      if (triggerEl) triggerEl.classList.remove('playing');
       console.warn('Gagal memainkan audio sebutan:', e);
     });
   }
@@ -808,6 +989,491 @@ class CorpusApp {
         `).join('')}
       </div>
     `;
+  }
+
+  async renderCompareView(root1Param, root2Param) {
+    const isEn = i18n.currentLang === 'en';
+    const defaultR1 = "غ ف ر";
+    const defaultR2 = "ع ف و";
+    const r1 = (root1Param || defaultR1).trim();
+    const r2 = (root2Param || defaultR2).trim();
+
+    this.viewContainer.innerHTML = `
+      <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+        ${i18n.t('loadingCorpus')}
+      </div>
+    `;
+
+    const [r1Detail, r2Detail, translations] = await Promise.all([
+      corpusStore.getRootDetails(r1),
+      corpusStore.getRootDetails(r2),
+      corpusStore.fetchTranslation(i18n.currentLang)
+    ]);
+
+    const topRootsForSelect = this.rootsIndex.slice(0, 300);
+
+    // Compute stats for R1
+    const r1Occ = r1Detail?.occurrences || [];
+    let r1Meccan = 0;
+    let r1Medinan = 0;
+    const r1Surahs = new Set();
+    r1Occ.forEach(o => {
+      r1Surahs.add(o.s);
+      const sObj = this.surahs.find(s => (s.number || s.id) === o.s);
+      if (sObj?.revelation_type === 'Medinan') r1Medinan++; else r1Meccan++;
+    });
+    const r1Total = r1Occ.length || 1;
+    const r1MeccanPct = Math.round((r1Meccan / r1Total) * 100);
+    const r1MedinanPct = 100 - r1MeccanPct;
+
+    // Compute stats for R2
+    const r2Occ = r2Detail?.occurrences || [];
+    let r2Meccan = 0;
+    let r2Medinan = 0;
+    const r2Surahs = new Set();
+    r2Occ.forEach(o => {
+      r2Surahs.add(o.s);
+      const sObj = this.surahs.find(s => (s.number || s.id) === o.s);
+      if (sObj?.revelation_type === 'Medinan') r2Medinan++; else r2Meccan++;
+    });
+    const r2Total = r2Occ.length || 1;
+    const r2MeccanPct = Math.round((r2Meccan / r2Total) * 100);
+    const r2MedinanPct = 100 - r2MeccanPct;
+
+    // Find Co-occurring verses where BOTH roots appear in the same ayah
+    const r1VerseMap = new Map();
+    r1Occ.forEach(o => {
+      const key = `${o.s}:${o.a}`;
+      if (!r1VerseMap.has(key)) r1VerseMap.set(key, []);
+      r1VerseMap.get(key).push(o);
+    });
+
+    const coOccurring = [];
+    const seenCoKey = new Set();
+    r2Occ.forEach(o2 => {
+      const key = `${o2.s}:${o2.a}`;
+      if (r1VerseMap.has(key) && !seenCoKey.has(key)) {
+        seenCoKey.add(key);
+        coOccurring.push({
+          s: o2.s,
+          a: o2.a,
+          r1Tokens: r1VerseMap.get(key),
+          r2Token: o2
+        });
+      }
+    });
+
+    const r1Meanings = isEn && r1Detail?.meanings_en?.length ? r1Detail.meanings_en.join(', ') : (r1Detail?.meanings_ms?.join(', ') || '—');
+    const r2Meanings = isEn && r2Detail?.meanings_en?.length ? r2Detail.meanings_en.join(', ') : (r2Detail?.meanings_ms?.join(', ') || '—');
+
+    this.viewContainer.innerHTML = `
+      <div class="section-title-bar">
+        <div>
+          <h2 class="section-title">${i18n.t('compareTitle')}</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
+            ${i18n.t('compareSubtitle')}
+          </p>
+        </div>
+      </div>
+
+      <div class="compare-box">
+        <form id="compareForm" class="compare-selector-grid">
+          <div>
+            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">${i18n.t('compareRoot1')}</label>
+            <input type="text" id="compInput1" class="search-input" value="${r1}" list="rootsList1" style="font-family: var(--font-arabic); font-size: 1.3rem; text-align: center; margin-top: 0.35rem;" required>
+            <datalist id="rootsList1">
+              ${topRootsForSelect.map(r => `<option value="${r.root}">${r.root} (${(r.meanings_ms || []).slice(0, 2).join(', ')})</option>`).join('')}
+            </datalist>
+          </div>
+
+          <div class="compare-vs-badge">VS</div>
+
+          <div>
+            <label style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">${i18n.t('compareRoot2')}</label>
+            <input type="text" id="compInput2" class="search-input" value="${r2}" list="rootsList2" style="font-family: var(--font-arabic); font-size: 1.3rem; text-align: center; margin-top: 0.35rem;" required>
+            <datalist id="rootsList2">
+              ${topRootsForSelect.map(r => `<option value="${r.root}">${r.root} (${(r.meanings_ms || []).slice(0, 2).join(', ')})</option>`).join('')}
+            </datalist>
+          </div>
+        </form>
+
+        <div style="text-align: center; margin-top: 1rem;">
+          <button type="submit" form="compareForm" class="btn-action btn-primary" style="padding: 0.5rem 1.5rem;">
+            🔍 ${i18n.t('compareBtn')}
+          </button>
+        </div>
+
+        <div class="compare-split-grid">
+          <!-- Root 1 Stats Card -->
+          <div class="compare-col-card">
+            <div style="text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+              <a href="#root/${encodeURIComponent(r1)}" class="root-ar" style="font-size: 2.5rem; text-decoration: none; display: block;">${r1}</a>
+              <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.25rem;">"${r1Meanings}"</div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('occurrences')}:</span>
+                <strong style="color: var(--accent-gold);">${r1Occ.length}</strong>
+              </div>
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('uniqueSurahsCount')}:</span>
+                <strong>${r1Surahs.size} surah</strong>
+              </div>
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('meccanRatio')} / ${i18n.t('medinanRatio')}:</span>
+                <span>🕌 ${r1MeccanPct}% / 🌴 ${r1MedinanPct}%</span>
+              </div>
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('verbFormsUsed')}:</span>
+                <span style="color: var(--accent-blue);">${(r1Detail?.verb_forms || []).map(v => 'Form ' + v).join(', ') || 'Form I'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Root 2 Stats Card -->
+          <div class="compare-col-card">
+            <div style="text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+              <a href="#root/${encodeURIComponent(r2)}" class="root-ar" style="font-size: 2.5rem; text-decoration: none; display: block;">${r2}</a>
+              <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0.25rem;">"${r2Meanings}"</div>
+            </div>
+            <div style="margin-top: 1rem;">
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('occurrences')}:</span>
+                <strong style="color: var(--accent-gold);">${r2Occ.length}</strong>
+              </div>
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('uniqueSurahsCount')}:</span>
+                <strong>${r2Surahs.size} surah</strong>
+              </div>
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('meccanRatio')} / ${i18n.t('medinanRatio')}:</span>
+                <span>🕌 ${r2MeccanPct}% / 🌴 ${r2MedinanPct}%</span>
+              </div>
+              <div class="compare-stat-row">
+                <span style="color: var(--text-muted);">${i18n.t('verbFormsUsed')}:</span>
+                <span style="color: var(--accent-blue);">${(r2Detail?.verb_forms || []).map(v => 'Form ' + v).join(', ') || 'Form I'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Co-occurring Verses Section -->
+      <div class="section-title-bar">
+        <h3 class="section-title">
+          🔗 ${i18n.t('coOccurringVerses')} (<span id="coOccurCount">${coOccurring.length}</span>)
+        </h3>
+      </div>
+
+      <div class="concordance-list">
+        ${coOccurring.length === 0 ? `
+          <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted); background: var(--bg-card); border-radius: var(--radius-md);">
+            ${i18n.t('noCoOccurrences')}
+          </div>
+        ` : coOccurring.map(item => {
+          const sObj = this.surahs.find(s => (s.number || s.id) === item.s);
+          const sName = sObj ? (isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin)) : `Surah ${item.s}`;
+          const transText = translations?.[String(item.s)]?.[String(item.a)] || '';
+          const r1Words = item.r1Tokens.map(t => t.ar).join(' / ');
+          const r2Word = item.r2Token.ar;
+
+          return `
+            <div class="concordance-item">
+              <div class="concordance-header">
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                  <span style="font-weight: 700; color: var(--accent-gold);">
+                    ${sName} (${item.s}:${item.a})
+                  </span>
+                  <span class="badge-sarf badge-vf">${r1}: ${r1Words}</span>
+                  <span class="badge-sarf badge-asp">${r2}: ${r2Word}</span>
+                </div>
+                <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${item.s}/${item.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+                  ${i18n.t('readAyahBtn')}
+                </a>
+              </div>
+              ${transText ? `<div class="concordance-ms" style="margin-top: 0.5rem;">"${transText}"</div>` : ''}
+              <div style="margin-top: 0.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                ${item.r1Tokens.map(tok => `
+                  <a href="#word/${item.s}:${item.a}:${tok.p}" class="btn-action" style="font-size: 0.75rem;">
+                    🔎 ${tok.ar} (${tok.tr}) &bull; ${tok.ms || tok.en}
+                  </a>
+                `).join('')}
+                <a href="#word/${item.s}:${item.a}:${item.r2Token.p}" class="btn-action" style="font-size: 0.75rem;">
+                  🔎 ${item.r2Token.ar} (${item.r2Token.tr}) &bull; ${item.r2Token.ms || item.r2Token.en}
+                </a>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    document.getElementById('compareForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const in1 = document.getElementById('compInput1').value.trim();
+      const in2 = document.getElementById('compInput2').value.trim();
+      if (in1 && in2) {
+        window.location.hash = `#compare/${encodeURIComponent(in1)}/${encodeURIComponent(in2)}`;
+      }
+    });
+  }
+
+  renderLearnView() {
+    const isEn = i18n.currentLang === 'en';
+    const top100 = this.rootsIndex.slice(0, 100);
+    let cardIdx = 0;
+    let quizScore = 0;
+    let quizIdx = 0;
+
+    this.viewContainer.innerHTML = `
+      <div class="section-title-bar">
+        <div>
+          <h2 class="section-title">${i18n.t('learnTitle')}</h2>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
+            ${i18n.t('learnSubtitle')}
+          </p>
+        </div>
+      </div>
+
+      <div class="learn-tabs">
+        <button class="learn-tab active" id="tabFlashcardsBtn">${i18n.t('tabFlashcards')}</button>
+        <button class="learn-tab" id="tabQuizBtn">${i18n.t('tabQuiz')}</button>
+      </div>
+
+      <!-- Flashcards Container -->
+      <div id="flashcardsPane">
+        <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem;" id="cardCounter">
+          ${i18n.t('cardProgress', { current: 1, total: top100.length })}
+        </div>
+
+        <div class="flashcard-wrapper">
+          <div class="flashcard" id="flashcardElement" title="${i18n.t('flipCardHint')}">
+            <!-- Front Face -->
+            <div class="flashcard-face flashcard-front">
+              <div style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 700;">
+                TOP #${cardIdx + 1} &bull; ${top100[0]?.count || 0} ${i18n.t('occurrences')}
+              </div>
+              <div class="flashcard-front-ar" id="cardAr">
+                ${top100[0]?.root || ''}
+              </div>
+              <div style="font-size: 0.8rem; color: var(--text-muted);">
+                👆 ${i18n.t('flipCardHint')}
+              </div>
+            </div>
+
+            <!-- Back Face -->
+            <div class="flashcard-face flashcard-back">
+              <div style="font-size: 0.85rem; color: var(--text-muted);">
+                ${top100[0]?.root || ''} &bull; ${top100[0]?.count || 0} ${i18n.t('occurrences')}
+              </div>
+              <div style="margin: auto 0;">
+                <div style="font-size: 1.3rem; font-weight: 700; color: #ffffff;" id="cardMeanings">
+                  "${(isEn ? top100[0]?.meanings_en : top100[0]?.meanings_ms)?.slice(0, 3).join(', ') || '—'}"
+                </div>
+                <div style="margin-top: 0.75rem; font-size: 0.9rem; color: var(--accent-gold); font-family: var(--font-arabic);" id="cardLemmas">
+                  ${(top100[0]?.lemmas || []).join(' • ') || '—'}
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary);" id="cardSample">
+                  Sample: ${top100[0]?.sample?.ar || ''} (${top100[0]?.sample?.tr || ''}) &bull; "${isEn ? top100[0]?.sample?.en : top100[0]?.sample?.ms}"
+                </div>
+              </div>
+              <div>
+                <a href="#root/${encodeURIComponent(top100[0]?.root || '')}" class="btn-action" id="cardLexLink" style="font-size: 0.8rem;">
+                  ${i18n.t('rootLexiconLink', { root: top100[0]?.root || '' })}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flashcard-controls">
+          <button class="btn-action" id="btnPrevCard">${i18n.t('prevCard')}</button>
+          <button class="btn-action" id="btnShuffleCard">${i18n.t('shuffleCards')}</button>
+          <button class="btn-action btn-primary" id="btnNextCard">${i18n.t('nextCard')}</button>
+        </div>
+      </div>
+
+      <!-- Quiz Container -->
+      <div id="quizPane" style="display: none;">
+        <div class="quiz-card" id="quizCardElement">
+          <!-- Quiz populated dynamically -->
+        </div>
+      </div>
+    `;
+
+    // Setup Flashcard Logic
+    const cardEl = document.getElementById('flashcardElement');
+    cardEl.addEventListener('click', () => {
+      cardEl.classList.toggle('flipped');
+    });
+
+    const updateCard = () => {
+      cardEl.classList.remove('flipped');
+      const item = top100[cardIdx];
+      if (!item) return;
+
+      document.getElementById('cardCounter').textContent = i18n.t('cardProgress', { current: cardIdx + 1, total: top100.length });
+      document.getElementById('cardAr').textContent = item.root;
+      const meanings = (isEn && item.meanings_en?.length ? item.meanings_en : item.meanings_ms) || [];
+      document.getElementById('cardMeanings').textContent = `"${meanings.slice(0, 3).join(', ') || '—'}"`;
+      document.getElementById('cardLemmas').textContent = (item.lemmas || []).join(' • ') || '—';
+      const sampleText = item.sample ? `Sample: ${item.sample.ar || ''} (${item.sample.tr || ''}) &bull; "${isEn ? (item.sample.en || item.sample.ms) : (item.sample.ms || item.sample.en)}"` : '';
+      document.getElementById('cardSample').innerHTML = sampleText;
+      const lexLink = document.getElementById('cardLexLink');
+      lexLink.href = `#root/${encodeURIComponent(item.root)}`;
+      lexLink.textContent = i18n.t('rootLexiconLink', { root: item.root });
+    };
+
+    document.getElementById('btnPrevCard').addEventListener('click', () => {
+      cardIdx = (cardIdx - 1 + top100.length) % top100.length;
+      updateCard();
+    });
+    document.getElementById('btnNextCard').addEventListener('click', () => {
+      cardIdx = (cardIdx + 1) % top100.length;
+      updateCard();
+    });
+    document.getElementById('btnShuffleCard').addEventListener('click', () => {
+      cardIdx = Math.floor(Math.random() * top100.length);
+      updateCard();
+    });
+
+    // Quiz Questions Generator
+    const generateQuizQuestions = () => {
+      const questions = [];
+      for (let i = 0; i < 10; i++) {
+        const correctRoot = top100[(i * 7 + 3) % top100.length];
+        const correctMeanings = (isEn && correctRoot.meanings_en?.length ? correctRoot.meanings_en : correctRoot.meanings_ms) || [];
+        const correctAns = correctMeanings.slice(0, 2).join(', ') || correctRoot.root;
+
+        const distractors = [];
+        let attempts = 0;
+        while (distractors.length < 3 && attempts < 50) {
+          attempts++;
+          const rand = top100[Math.floor(Math.random() * top100.length)];
+          const rMeanings = (isEn && rand.meanings_en?.length ? rand.meanings_en : rand.meanings_ms) || [];
+          const text = rMeanings.slice(0, 2).join(', ');
+          if (rand.root !== correctRoot.root && text && !distractors.includes(text) && text !== correctAns) {
+            distractors.push(text);
+          }
+        }
+
+        const choices = [correctAns, ...distractors].sort(() => Math.random() - 0.5);
+        questions.push({
+          root: correctRoot.root,
+          correct: correctAns,
+          choices: choices
+        });
+      }
+      return questions;
+    };
+
+    const quizQuestions = generateQuizQuestions();
+
+    const renderQuizQuestion = () => {
+      const q = quizQuestions[quizIdx];
+      const qPane = document.getElementById('quizCardElement');
+      if (!q) {
+        qPane.innerHTML = `
+          <div style="text-align: center; padding: 2rem 1rem;">
+            <div style="font-size: 3rem;">🏆</div>
+            <h3 style="color: var(--accent-gold); margin-top: 0.5rem;">Tahniah! Kuiz Selesai!</h3>
+            <p style="font-size: 1.2rem; margin-top: 0.5rem; color: var(--text-primary);">
+              ${i18n.t('quizScore')} <strong>${quizScore} / ${quizQuestions.length}</strong>
+            </p>
+            <button class="btn-action btn-primary" id="btnRestartQuiz" style="margin-top: 1.5rem; padding: 0.5rem 1.5rem;">
+              ${i18n.t('quizRestart')}
+            </button>
+          </div>
+        `;
+        document.getElementById('btnRestartQuiz')?.addEventListener('click', () => {
+          quizScore = 0;
+          quizIdx = 0;
+          renderQuizQuestion();
+        });
+        return;
+      }
+
+      qPane.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.85rem; color: var(--accent-gold); font-weight: 700;">
+            ${i18n.t('quizQuestion')} ${quizIdx + 1} / ${quizQuestions.length}
+          </span>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">
+            ${i18n.t('quizScore')} ${quizScore}
+          </span>
+        </div>
+
+        <div style="text-align: center; margin: 1.5rem 0;">
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">
+            ${isEn ? 'What is the primary meaning of the Quranic root:' : 'Apakah makna utama bagi akar kata Al-Quran:'}
+          </p>
+          <div style="font-family: var(--font-arabic); font-size: 3.5rem; color: var(--accent-gold); margin-top: 0.25rem;">
+            ${q.root}
+          </div>
+        </div>
+
+        <div class="quiz-options-grid">
+          ${q.choices.map((c) => `
+            <button class="quiz-option-btn" data-choice="${c.replace(/"/g, '&quot;')}">
+              ${c}
+            </button>
+          `).join('')}
+        </div>
+
+        <div id="quizFeedbackBox" style="margin-top: 1.5rem; text-align: center; display: none;">
+          <button class="btn-action btn-primary" id="btnNextQuiz" style="padding: 0.5rem 1.5rem;">
+            ${i18n.t('quizNext')}
+          </button>
+        </div>
+      `;
+
+      let answered = false;
+      qPane.querySelectorAll('.quiz-option-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (answered) return;
+          answered = true;
+          const choice = btn.getAttribute('data-choice');
+          const isCorrect = choice === q.correct;
+
+          if (isCorrect) {
+            quizScore++;
+            btn.classList.add('correct');
+          } else {
+            btn.classList.add('wrong');
+            qPane.querySelectorAll('.quiz-option-btn').forEach(b => {
+              if (b.getAttribute('data-choice') === q.correct) b.classList.add('correct');
+            });
+          }
+
+          document.getElementById('quizFeedbackBox').style.display = 'block';
+          document.getElementById('btnNextQuiz').addEventListener('click', () => {
+            quizIdx++;
+            renderQuizQuestion();
+          });
+        });
+      });
+    };
+
+    // Tab switcher
+    const tabFlash = document.getElementById('tabFlashcardsBtn');
+    const tabQuiz = document.getElementById('tabQuizBtn');
+    const pFlash = document.getElementById('flashcardsPane');
+    const pQuiz = document.getElementById('quizPane');
+
+    tabFlash.addEventListener('click', () => {
+      tabFlash.classList.add('active');
+      tabQuiz.classList.remove('active');
+      pFlash.style.display = 'block';
+      pQuiz.style.display = 'none';
+    });
+
+    tabQuiz.addEventListener('click', () => {
+      tabQuiz.classList.add('active');
+      tabFlash.classList.remove('active');
+      pFlash.style.display = 'none';
+      pQuiz.style.display = 'block';
+      renderQuizQuestion();
+    });
   }
 }
 

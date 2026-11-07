@@ -255,6 +255,75 @@ async function runTests() {
     const btnJson = await page.$('#btnExportJson');
     assert(btnJson !== null, 'Butang eksport JSON wujud');
 
+    console.log('\n[TEST 12] Feature 1 & 7: Taburan Makkiyyah/Madaniyyah & Cetak Lembaran (#root/ر ح م)');
+    await page.goto(`http://localhost:${PORT}/index.html#root/%D8%B1%20%D8%AD%20%D9%85`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.dist-card');
+    const distCard = await page.$('.dist-card');
+    assert(distCard !== null, 'Kad taburan kekerapan wujud');
+    const distMeccan = await page.$('.dist-seg-meccan');
+    assert(distMeccan !== null, 'Segmen peratusan Makkiyyah terpapar');
+    const surahChips = await page.$$('.dist-chip');
+    assert(surahChips.length > 0, `Cip surah paling kerap dipaparkan (jumlah: ${surahChips.length})`);
+    const btnPrint = await page.$('#btnPrintSheet');
+    assert(btnPrint !== null, 'Butang Cetak Lembaran wujud');
+
+    console.log('\n[TEST 13] Feature 4: Rujukan Mu\'jam & Kamus Klasik Arab (Lane, Lisan, Wasit)');
+    const lexiconCards = await page.$$('.lexicon-card');
+    assert(lexiconCards.length === 3, `3 kad mu'jam klasik Arab dipaparkan (Lane, Lisan al-Arab, Al-Mu'jam al-Wasit)`);
+    const laneLink = await page.$('.lexicon-card a[href*="ejtaal.net"]');
+    assert(laneLink !== null, 'Pautan Lane\'s Lexicon disahkan');
+    const almaanyLink = await page.$('.lexicon-card a[href*="almaany.com"]');
+    assert(almaanyLink !== null, 'Pautan Lisan al-\'Arab / Almaany disahkan');
+
+    console.log('\n[TEST 14] Feature 2: Perbandingan Dua Akar Kata (#compare)');
+    await page.goto(`http://localhost:${PORT}/index.html#compare/%D8%BA%20%D9%81%20%D8%B1/%D8%B9%20%D9%81%20%D9%88`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.compare-split-grid');
+    const compareCols = await page.$$('.compare-col-card');
+    assert(compareCols.length === 2, '2 kad perbandingan sebelah-menyebelah dipaparkan');
+    const compareText = await page.content();
+    assert(compareText.includes('غ ف ر') && compareText.includes('ع ف و'), 'Kedua-dua akar kata dipaparkan');
+    const coOccurEl = await page.$('#coOccurCount');
+    const coOccurCount = parseInt(await coOccurEl.textContent(), 10);
+    assert(coOccurCount > 0, `Ayat musytarakah berjaya dikesan (ditemui: ${coOccurCount} ayat)`);
+
+    console.log('\n[TEST 15] Feature 5: Pusat Ulang Kaji & Kuiz (#learn)');
+    await page.goto(`http://localhost:${PORT}/index.html#learn`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#flashcardElement');
+    const flashcard = await page.$('#flashcardElement');
+    assert(flashcard !== null, 'Kad imbasan wujud');
+    await flashcard.click();
+    const isFlipped = await page.$eval('#flashcardElement', el => el.classList.contains('flipped'));
+    assert(isFlipped === true, 'Kad imbasan berjaya dibalikkan (3D flip effect aktif)');
+
+    // Tab Kuiz
+    const tabQuiz = await page.$('#tabQuizBtn');
+    await tabQuiz.click();
+    await page.waitForSelector('.quiz-options-grid');
+    const quizOptions = await page.$$('.quiz-option-btn');
+    assert(quizOptions.length === 4, '4 pilihan jawapan kuiz dipaparkan');
+    await quizOptions[0].click();
+    await page.waitForSelector('#quizFeedbackBox', { state: 'visible' });
+    const feedbackBoxVisible = await page.$eval('#quizFeedbackBox', el => el.style.display !== 'none');
+    assert(feedbackBoxVisible === true, 'Maklum balas kuiz terpapar serta-merta');
+
+    console.log('\n[TEST 16] Feature 6: Pengelompokan Tema Semantik (#roots)');
+    await page.goto(`http://localhost:${PORT}/index.html#roots`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.theme-pill');
+    const themePills = await page.$$('.theme-pill');
+    assert(themePills.length >= 8, `8 pil tema semantik Al-Quran dipaparkan (jumlah: ${themePills.length})`);
+    const ibadahPill = await page.$('.theme-pill[data-theme="ibadah"]');
+    await ibadahPill.click();
+    await page.waitForTimeout(100);
+    const filteredRootsContent = await page.$eval('#rootsGridTarget', el => el.textContent);
+    assert(filteredRootsContent.includes('ص ل و') || filteredRootsContent.includes('ص و م'), 
+      'Akar kata ditapis mengikut domain semantik Ibadah & Syariat');
+
+    console.log('\n[TEST 17] Feature 3: Audio Sebutan Kalimah pada Konkordans');
+    await page.goto(`http://localhost:${PORT}/index.html#root/%D8%B1%20%D8%AD%20%D9%85`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.concordance-item button[title*="Sebutan"], .concordance-item button[title*="Pronunciation"]');
+    const concAudioBtns = await page.$$('.concordance-item button[title*="Sebutan"], .concordance-item button[title*="Pronunciation"]');
+    assert(concAudioBtns.length > 0, `Butang audio sebutan kalimah hadir dalam konkordans (jumlah: ${concAudioBtns.length})`);
+
     console.log('\n' + '='.repeat(50));
     console.log(`JUMLAH UJIAN: ${passed + failed}`);
     console.log(`LULUS: ${passed}`);
