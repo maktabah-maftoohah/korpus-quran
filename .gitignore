@@ -4,5 +4,5 @@ scripts/.cache_fonts/
 .DS_Store
 Thumbs.db
 *.log
-.vscode/
+.vscode/*.log
 .idea/

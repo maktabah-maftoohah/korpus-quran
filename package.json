@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/test_qa.js",
-    "serve": "python -m http.server 8080"
+    "serve": "python scripts/serve.py"
   },
   "keywords": [
     "quran",

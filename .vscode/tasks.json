@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Web Server",
+      "type": "shell",
+      "command": "python",
+      "args": ["scripts/serve.py", "--no-browser"],
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Maktabah Maftoohah",
+          "endsPattern": "Serving root"
+        }
+      }
+    },
+    {
+      "label": "Run Korpus Al-Quran Server & Open Browser",
+      "type": "shell",
+      "command": "python",
+      "args": ["scripts/serve.py"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run QA Test Suite (test_qa.js)",
+      "type": "shell",
+      "command": "npm",
+      "args": ["test"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Verify Project Integrity",
+      "type": "shell",
+      "command": "python",
+      "args": ["scripts/verify_project.py"],
+      "problemMatcher": []
+    }
+  ]
+}
