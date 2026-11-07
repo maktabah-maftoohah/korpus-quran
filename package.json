@@ -1,0 +1,23 @@
+{
+  "name": "korpus-quran",
+  "version": "1.0.0",
+  "description": "Korpus Al-Quran Bahasa Melayu — Tatabahasa, I'rab, Morfologi & Mu'jam Akar Kata (Maktabah Maftoohah)",
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/test_qa.js",
+    "serve": "python -m http.server 8080"
+  },
+  "keywords": [
+    "quran",
+    "corpus",
+    "korpus",
+    "bahasa-melayu",
+    "morphology",
+    "irab",
+    "nahwu",
+    "sharaf",
+    "quranic-arabic"
+  ],
+  "author": "Maktabah Maftoohah",
+  "license": "MIT"
+}

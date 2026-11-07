@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maktabah Maftoohah — Korpus Al-Quran Bahasa Melayu</title>
+  <meta name="description" content="Korpus Tatabahasa, I'rab, Morfologi & Mu'jam Akar Kata Al-Quran dalam Bahasa Melayu / Nusantara.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./assets/icon-192.png">
+  <link rel="stylesheet" href="./css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800&family=Scheherazade+New:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="site-header">
+    <a href="#home" class="brand-group">
+      <img src="./assets/logo-mark.svg" alt="Maktabah Maftoohah" class="brand-logo">
+      <div class="brand-text">
+        <h1 data-i18n="heroTitle">Korpus Al-Quran Bahasa Melayu</h1>
+        <p>Maktabah Maftoohah</p>
+      </div>
+    </a>
+
+    <nav class="nav-links">
+      <a href="#home" class="nav-item active" data-nav="home" data-i18n="navHome">Laman Utama</a>
+      <a href="#roots" class="nav-item" data-nav="roots" data-i18n="navRoots">Mu'jam Akar Kata</a>
+      <a href="#surahs" class="nav-item" data-nav="surahs" data-i18n="navSurah">Daftar Surah</a>
+    </nav>
+
+    <div class="header-actions">
+      <button id="btnLangToggle" class="btn-lang" title="Tukar Bahasa / Switch Language">EN</button>
+      <a href="https://maktabah-maftoohah.github.io/al-quran/" target="_blank" rel="noopener noreferrer" class="btn-action" style="padding: 0.35rem 0.7rem; font-size: 0.8rem;">
+        📖 Baca Al-Quran ↗
+      </a>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Dynamic View Target -->
+    <div id="appView">
+      <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+        Sedang memuatkan pangkalan data korpus...
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <p data-i18n="footerText">Maktabah Maftoohah — Korpus Al-Quran Sumber Terbuka. Didedikasikan untuk umat Islam di rantau Nusantara.</p>
+    <p style="margin-top: 0.35rem; font-size: 0.75rem; color: var(--text-muted);">
+      Inisiatif Bebas & Sumber Terbuka (Zero-Build ES6 Architecture)
+    </p>
+  </footer>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

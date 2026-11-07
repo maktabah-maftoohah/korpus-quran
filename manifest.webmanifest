@@ -1,0 +1,22 @@
+{
+  "name": "Korpus Al-Quran Bahasa Melayu — Maktabah Maftoohah",
+  "short_name": "Korpus Quran",
+  "description": "Korpus Tatabahasa, I'rab, Morfologi & Mu'jam Akar Kata Al-Quran dalam Bahasa Melayu",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#0a1628",
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
