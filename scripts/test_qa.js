@@ -149,6 +149,12 @@ async function runTests() {
     const newLangText = await langBtn.textContent();
     assert(newLangText === 'MY', `Bahasa berjaya ditukar ke Bahasa Inggeris (butang pamer: "${newLangText}")`);
 
+    const enTitle = await page.title();
+    assert(enTitle.includes('Quranic Linguistic Corpus'), `Tajuk Bahasa Inggeris tepat: "${enTitle}"`);
+    const brandHeading = await page.$('.brand-text h1');
+    const brandVal = await brandHeading.textContent();
+    assert(brandVal.includes('Quranic Linguistic Corpus'), `Brand tajuk EN tepat: "${brandVal}"`);
+
     console.log('\n' + '='.repeat(50));
     console.log(`JUMLAH UJIAN: ${passed + failed}`);
     console.log(`LULUS: ${passed}`);

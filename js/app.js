@@ -1,5 +1,5 @@
 /**
- * Maktabah Maftoohah — Korpus Al-Quran (Bahasa Melayu)
+ * Maktabah Maftoohah — Korpus Al-Quran
  * Enjin Aplikasi Utama & Penghala (Router & Application Controller)
  */
 
@@ -56,6 +56,7 @@ class CorpusApp {
   }
 
   setupHeaderEvents() {
+    this.updateStaticTranslations();
     const langBtn = document.getElementById('btnLangToggle');
     if (langBtn) {
       langBtn.textContent = i18n.currentLang === 'ms' ? 'EN' : 'MY';
@@ -70,6 +71,7 @@ class CorpusApp {
   }
 
   updateStaticTranslations() {
+    document.title = i18n.t('siteTitle');
     document.querySelectorAll('[data-i18n]').forEach((el) => {
       const key = el.getAttribute('data-i18n');
       el.textContent = i18n.t(key);
@@ -223,7 +225,7 @@ class CorpusApp {
       </div>
 
       <div class="search-wrapper" style="margin: 0 0 1.5rem 0; max-width: 100%;">
-        <input type="text" id="rootFilterInput" class="search-input" placeholder="Tapis akar kata Arab atau makna Bahasa Melayu..." value="${initialQuery}">
+        <input type="text" id="rootFilterInput" class="search-input" placeholder="Tapis akar kata Arab atau makna..." value="${initialQuery}">
       </div>
 
       <div id="rootsGridTarget" class="roots-grid"></div>

@@ -1,7 +1,7 @@
 {
-  "name": "Korpus Al-Quran Bahasa Melayu — Maktabah Maftoohah",
+  "name": "Korpus Al-Quran — Maktabah Maftoohah",
   "short_name": "Korpus Quran",
-  "description": "Korpus Tatabahasa, I'rab, Morfologi & Mu'jam Akar Kata Al-Quran dalam Bahasa Melayu",
+  "description": "Korpus Tatabahasa, I'rab, Morfologi & Mu'jam Akar Kata Al-Quran",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

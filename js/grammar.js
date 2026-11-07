@@ -1,6 +1,6 @@
 /**
- * Maktabah Maftoohah — Korpus Al-Quran (Bahasa Melayu)
- * Enjin Tatabahasa, Morfologi & I'rab Bahasa Melayu
+ * Maktabah Maftoohah — Korpus Al-Quran
+ * Enjin Tatabahasa, Morfologi & I'rab Al-Quran
  */
 
 export const POS_DICTIONARY = {

@@ -67,14 +67,14 @@ p_banner_ar_sub, _ = text_to_path(amiri_font_path, 'المكتبة المفتو�
 p_banner_org, _ = text_to_path(inter_font_path, 'MAKTABAH MAFTOOHAH', 13.5)
 p_banner_title, _ = text_to_path(inter_font_path, 'Korpus Al-Quran', 62)
 p_banner_desc, _ = text_to_path(inter_font_path, 'Korpus Tatabahasa, I\'rab, Morfologi & Mu\'jam 1,651 Akar Kata', 20)
-p_banner_subdesc, _ = text_to_path(inter_font_path, 'Kajian sintaksis bahasa Arab, lema, dan konkordans 77,429 kalimah dalam Bahasa Melayu.', 15)
+p_banner_subdesc, _ = text_to_path(inter_font_path, 'Kajian sintaksis bahasa Arab, lema, dan konkordans 77,429 kalimah Al-Quran.', 15)
 
 # Pills
 p_pill1, _ = text_to_path(inter_font_path, '1,651 Akar Kata', 13.5)
 p_pill2, _ = text_to_path(inter_font_path, 'Analisis I\'rab & Nahu', 13.5)
 p_pill3, _ = text_to_path(inter_font_path, '77,429 Kalimah Quran', 13.5)
 p_pill4, _ = text_to_path(inter_font_path, 'Konkordans Lengkap', 13.5)
-p_pill5, _ = text_to_path(inter_font_path, 'Bahasa Melayu', 12.5)
+p_pill5, _ = text_to_path(inter_font_path, 'Analisis Morfologi', 12.5)
 p_pill6, _ = text_to_path(inter_font_path, 'Zero-Build PWA', 12.5)
 p_pill7, _ = text_to_path(inter_font_path, 'Tafsir Basmeih Terbina', 12.5)
 p_url, _ = text_to_path(inter_font_path, 'maktabah-maftoohah.github.io/korpus-quran', 14)
@@ -82,9 +82,9 @@ p_star_text, _ = text_to_path(inter_font_path, 'Inisiatif Bebas Sumber Terbuka',
 
 # Logo texts
 p_logo_ar, _ = text_to_path(amiri_font_path, 'مُعْجَم وَإِعْرَاب القُرْآن', 34, direction='rtl', language='ar', script='Arab')
-p_logo_title, _ = text_to_path(inter_font_path, 'Korpus Quran', 44)
+p_logo_title, _ = text_to_path(inter_font_path, 'Korpus Al-Quran', 44)
 p_logo_org, _ = text_to_path(inter_font_path, 'MAKTABAH MAFTOOHAH', 13.5)
-p_logo_sub, _ = text_to_path(inter_font_path, '• Korpus Al-Quran Bahasa Melayu', 13.5)
+p_logo_sub, _ = text_to_path(inter_font_path, '• Quranic Linguistic Corpus', 13.5)
 
 # Build Distinct Logo Mark for Korpus Al-Quran (512x512)
 logo_mark_svg = '''<?xml version="1.0" encoding="UTF-8"?>

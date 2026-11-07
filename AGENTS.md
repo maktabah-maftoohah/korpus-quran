@@ -1,4 +1,4 @@
-# Project Invariants: Maktabah Maftoohah Korpus Al-Quran (Bahasa Melayu)
+# Project Invariants: Maktabah Maftoohah Korpus Al-Quran
 
 ## Core Architectural Invariants
 1. **GitHub Pages Subpath Compatibility**:

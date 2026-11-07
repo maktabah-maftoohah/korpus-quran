@@ -5,15 +5,16 @@
 
 export const translations = {
   ms: {
-    siteTitle: "Maktabah Maftoohah — Korpus Al-Quran Bahasa Melayu",
+    siteTitle: "Maktabah Maftoohah — Korpus Al-Quran",
+    brandTitle: "Korpus Al-Quran",
     navHome: "Laman Utama",
     navRoots: "Mu'jam Akar Kata",
     navWord: "Analisis Kata & I'rab",
     navSurah: "Daftar Surah",
-    searchPlaceholder: "Cari akar kata (cth: ر ح م), kalimah Arab, terjemahan Melayu, atau jump (cth: 1:1:1)...",
+    searchPlaceholder: "Cari akar kata (cth: ر ح م), kalimah Arab, terjemahan, atau jump (cth: 1:1:1)...",
     searchBtn: "Cari",
-    heroTitle: "Korpus Al-Quran Bahasa Melayu",
-    heroSubtitle: "Analisis sintaksis, tatabahasa Arab, morfologi, I'rab, dan mu'jam akar kata lengkap dalam Bahasa Melayu / Nusantara.",
+    heroTitle: "Korpus Al-Quran",
+    heroSubtitle: "Analisis sintaksis, tatabahasa Arab, morfologi, I'rab, dan mu'jam akar kata lengkap.",
     statRoots: "Akar Kata Unik",
     statTokens: "Kalimah Dianalisis",
     statSurahs: "Surah Lengkap",
@@ -30,18 +31,19 @@ export const translations = {
     concordanceTitle: "Konkordans Ayat (Senarai Kemunculan)",
     backToRoots: "← Kembali ke Senarai Akar Kata",
     noResults: "Tiada rekod ditemui untuk carian tersebut.",
-    footerText: "Maktabah Maftoohah — Korpus Al-Quran Sumber Terbuka. Didedikasikan untuk umat Islam di rantau Nusantara."
+    footerText: "Maktabah Maftoohah — Korpus Al-Quran Sumber Terbuka."
   },
   en: {
-    siteTitle: "Maktabah Maftoohah — Malay Quranic Corpus",
+    siteTitle: "Maktabah Maftoohah — Quranic Linguistic Corpus",
+    brandTitle: "Quranic Linguistic Corpus",
     navHome: "Home",
     navRoots: "Root Lexicon",
     navWord: "Word Analysis & I'rab",
     navSurah: "Surah List",
-    searchPlaceholder: "Search roots (e.g. ر ح م), Arabic word, Malay gloss, or jump (e.g. 1:1:1)...",
+    searchPlaceholder: "Search roots (e.g. ر ح م), Arabic word, translation, or jump (e.g. 1:1:1)...",
     searchBtn: "Search",
-    heroTitle: "Malay Quranic Linguistic Corpus",
-    heroSubtitle: "Comprehensive syntactic, grammatical, morphological, and root lexicon analysis in Bahasa Melayu / Nusantara.",
+    heroTitle: "Quranic Linguistic Corpus",
+    heroSubtitle: "Comprehensive syntactic, grammatical, morphological, and root lexicon analysis.",
     statRoots: "Unique Roots",
     statTokens: "Word Tokens",
     statSurahs: "Complete Surahs",
@@ -58,7 +60,7 @@ export const translations = {
     concordanceTitle: "Verse Concordance (Occurrences List)",
     backToRoots: "← Back to Root Lexicon",
     noResults: "No records found for that search query.",
-    footerText: "Maktabah Maftoohah — Open Source Quran Corpus. Dedicated to the Nusantara Islamic community."
+    footerText: "Maktabah Maftoohah — Open Source Quranic Linguistic Corpus."
   }
 };
 
