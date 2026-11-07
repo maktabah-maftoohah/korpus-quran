@@ -1,4 +1,6 @@
 node_modules/
+.cache_fonts/
+scripts/.cache_fonts/
 .DS_Store
 Thumbs.db
 *.log

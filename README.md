@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/site-banner.png" alt="Maktabah Maftoohah Korpus Al-Quran Banner" width="100%">
+</p>
+
 # Maktabah Maftoohah — Korpus Al-Quran Bahasa Melayu (المكتبة المفتوحة)
 
 [![Live Web Application](https://img.shields.io/badge/Live%20App-GitHub%20Pages-059669?style=for-the-badge&logo=github)](https://maktabah-maftoohah.github.io/korpus-quran/)
