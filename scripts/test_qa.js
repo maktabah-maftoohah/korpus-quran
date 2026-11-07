@@ -217,6 +217,44 @@ async function runTests() {
     const coldHeaderHref = await coldHeaderLink.getAttribute('href');
     assert(coldHeaderHref.includes('lang=en'), `Pautan kembali ke Al-Quran membawa parameter lang=en: "${coldHeaderHref}"`);
 
+    console.log('\n[TEST 10] Tier 5 & 6: Sarf & Awzan al-Fi\'il (#word/1:5:2 dan #word/1:5:4)');
+    await page.goto(`http://localhost:${PORT}/index.html#word/1:5:2`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.grammar-grid');
+    const sarfHeader = await page.$('.section-title-bar h3');
+    const pageText = await page.content();
+    assert(pageText.includes('Sarf') || pageText.includes('Morfologi'), `Seksyen Sarf Lanjutan terpapar`);
+    assert(pageText.includes('Form I') || pageText.includes('Bentuk I'), `Wazan Form I dikesan pada 1:5:2`);
+    assert(pageText.includes('Mudhari') || pageText.includes('Imperfect'), `Kala Mudhari' dikesan pada 1:5:2`);
+    assert(pageText.includes('Ma\'lum') || pageText.includes('Active'), `Ragam Ma'lum / Active dikesan pada 1:5:2`);
+
+    await page.goto(`http://localhost:${PORT}/index.html#word/1:5:4`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.grammar-grid');
+    const s154Text = await page.content();
+    assert(s154Text.includes('Form X') || s154Text.includes('Bentuk X') || s154Text.includes('اِسْتَفْعَلَ'), 
+      `Wazan Form X (Istaf'ala) dikesan pada 1:5:4 (nasta'een)`);
+
+    console.log('\n[TEST 11] Tier 7 & 8: Penapis Carian Konkordans & Eksport Data (#root/ع ب د)');
+    await page.goto(`http://localhost:${PORT}/index.html#root/%D8%B9%20%D8%A8%20%D8%AF`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.filter-pill');
+    const filterPills = await page.$$('.filter-pill');
+    assert(filterPills.length >= 4, `Penapis linguistik konkordans dipaparkan (jumlah: ${filterPills.length})`);
+
+    const initialCountEl = await page.$('#concordanceCount');
+    const initialCount = parseInt(await initialCountEl.textContent(), 10);
+    assert(initialCount > 100, `Jumlah rekod awal konkordans sah: ${initialCount}`);
+
+    const verbFilterBtn = await page.$('.filter-pill[data-filter="verb"]');
+    await verbFilterBtn.click();
+    await page.waitForTimeout(100);
+    const verbFilteredCount = parseInt(await (await page.$('#concordanceCount')).textContent(), 10);
+    assert(verbFilteredCount > 0 && verbFilteredCount <= initialCount, 
+      `Penapis kata kerja berfungsi, rekod dikurangkan ke: ${verbFilteredCount}`);
+
+    const btnCsv = await page.$('#btnExportCsv');
+    assert(btnCsv !== null, 'Butang eksport CSV wujud');
+    const btnJson = await page.$('#btnExportJson');
+    assert(btnJson !== null, 'Butang eksport JSON wujud');
+
     console.log('\n' + '='.repeat(50));
     console.log(`JUMLAH UJIAN: ${passed + failed}`);
     console.log(`LULUS: ${passed}`);

@@ -329,41 +329,118 @@ class CorpusApp {
         </div>
       </div>
 
-      <div class="section-title-bar">
-        <h3 class="section-title">${i18n.t('concordanceTitle')} (${rootDetail.occurrences.length})</h3>
+      <div class="section-title-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <h3 class="section-title">${i18n.t('concordanceTitle')} (<span id="concordanceCount">${rootDetail.occurrences.length}</span>)</h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn-action" id="btnExportCsv" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${i18n.t('exportCsvBtn')}</button>
+          <button class="btn-action" id="btnExportJson" style="font-size: 0.8rem; padding: 0.25rem 0.6rem;">${i18n.t('exportJsonBtn')}</button>
+        </div>
       </div>
 
-      <div class="concordance-list">
-        ${rootDetail.occurrences.map(occ => {
-          const sObj = this.surahs.find(s => (s.number || s.id) === occ.s);
-          const sName = sObj ? (isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin)) : `Surah ${occ.s}`;
-          const transText = translations?.[String(occ.s)]?.[String(occ.a)] || '';
-          const literalGloss = isEn && occ.en ? occ.en : occ.ms;
+      <!-- Tier 7: Linguistic Filter Pills -->
+      <div class="filter-pills-row" id="concordanceFilterRow">
+        <button class="filter-pill active" data-filter="all">${i18n.t('filterAll')}</button>
+        <button class="filter-pill" data-filter="verb">${i18n.t('filterVerbs')}</button>
+        <button class="filter-pill" data-filter="noun">${i18n.t('filterNouns')}</button>
+        <button class="filter-pill" data-filter="act_pcpl">${i18n.t('filterActiveParticiple')}</button>
+        <button class="filter-pill" data-filter="pass_pcpl">${i18n.t('filterPassiveParticiple')}</button>
+      </div>
 
-          return `
-            <div class="concordance-item">
-              <div class="concordance-header">
-                <a href="#word/${occ.s}:${occ.a}:${occ.p}" class="concordance-ref">
-                  ${sName} (${occ.s}:${occ.a}) &bull; ${i18n.t('wordPosition', { pos: occ.p })}
-                </a>
-                <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${occ.s}/${occ.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
-                  ${i18n.t('readAyahBtn')}
-                </a>
-              </div>
-              <div class="concordance-ar">
-                <span class="highlight-target">${occ.ar}</span>
-              </div>
-              ${transText ? `<div class="concordance-ms">"${transText}"</div>` : ''}
-              <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                <span>${i18n.t('pronunciation')} <em>${occ.tr}</em></span>
-                <span>${i18n.t('lemma')} <strong style="font-family: var(--font-arabic);">${occ.lemma}</strong></span>
-                <span>${i18n.t('literalTranslation')} <strong>${literalGloss}</strong></span>
-              </div>
-            </div>
-          `;
-        }).join('')}
+      <div class="concordance-list" id="concordanceContainer">
+        ${this.renderConcordanceItemsHtml(rootDetail.occurrences, translations, isEn)}
       </div>
     `;
+
+    // Bind Filter Pills
+    const filterRow = document.getElementById('concordanceFilterRow');
+    const container = document.getElementById('concordanceContainer');
+    const counterEl = document.getElementById('concordanceCount');
+
+    if (filterRow && container) {
+      filterRow.querySelectorAll('.filter-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterRow.querySelectorAll('.filter-pill').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const filter = btn.getAttribute('data-filter');
+
+          let filtered = rootDetail.occurrences;
+          if (filter === 'verb') {
+            filtered = rootDetail.occurrences.filter(o => o.vf || o.asp || (o.pos_tag && o.pos_tag.includes('V')));
+          } else if (filter === 'noun') {
+            filtered = rootDetail.occurrences.filter(o => o.case || (o.pos_tag && o.pos_tag.includes('N')));
+          } else if (filter === 'act_pcpl') {
+            filtered = rootDetail.occurrences.filter(o => o.deriv === 'ACT_PCPL');
+          } else if (filter === 'pass_pcpl') {
+            filtered = rootDetail.occurrences.filter(o => o.deriv === 'PASS_PCPL');
+          }
+
+          if (counterEl) counterEl.textContent = filtered.length;
+          container.innerHTML = this.renderConcordanceItemsHtml(filtered, translations, isEn);
+        });
+      });
+    }
+
+    // Bind Export Buttons (Tier 8)
+    const btnCsv = document.getElementById('btnExportCsv');
+    if (btnCsv) {
+      btnCsv.addEventListener('click', () => this.exportRootCsv(rootDetail, translations));
+    }
+    const btnJson = document.getElementById('btnExportJson');
+    if (btnJson) {
+      btnJson.addEventListener('click', () => this.exportRootJson(rootDetail));
+    }
+  }
+
+  renderConcordanceItemsHtml(occurrences, translations, isEn) {
+    if (!occurrences || occurrences.length === 0) {
+      return `<div style="text-align: center; padding: 2rem; color: var(--text-muted);">${i18n.t('noResults')}</div>`;
+    }
+
+    return occurrences.map(occ => {
+      const sObj = this.surahs.find(s => (s.number || s.id) === occ.s);
+      const sName = sObj ? (isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin)) : `Surah ${occ.s}`;
+      const transText = translations?.[String(occ.s)]?.[String(occ.a)] || '';
+      const literalGloss = isEn && occ.en ? occ.en : occ.ms;
+
+      let sarfBadgesHtml = '';
+      if (occ.vf) sarfBadgesHtml += `<span class="badge-sarf badge-vf">Form ${occ.vf}</span>`;
+      if (occ.asp) {
+        const aspLabel = occ.asp === 'PERF' ? 'Madhi' : (occ.asp === 'IMPF' ? 'Mudhari\'' : 'Amr');
+        sarfBadgesHtml += `<span class="badge-sarf badge-asp">${aspLabel}</span>`;
+      }
+      if (occ.vox === 'PASS') sarfBadgesHtml += `<span class="badge-sarf badge-pass">Majhul</span>`;
+      if (occ.deriv) {
+        const derivLabel = occ.deriv === 'ACT_PCPL' ? 'Isim Fa\'il' : (occ.deriv === 'PASS_PCPL' ? 'Isim Maf\'ul' : 'Masdar');
+        sarfBadgesHtml += `<span class="badge-sarf badge-deriv">${derivLabel}</span>`;
+      }
+      if (occ.case) sarfBadgesHtml += `<span class="badge-sarf badge-case">${occ.case}</span>`;
+      if (occ.pgn) sarfBadgesHtml += `<span class="badge-sarf" style="background: rgba(255,255,255,0.08); color: var(--text-secondary);">${occ.pgn}</span>`;
+
+      return `
+        <div class="concordance-item">
+          <div class="concordance-header">
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+              <a href="#word/${occ.s}:${occ.a}:${occ.p}" class="concordance-ref">
+                ${sName} (${occ.s}:${occ.a}) &bull; ${i18n.t('wordPosition', { pos: occ.p })}
+              </a>
+              ${sarfBadgesHtml}
+            </div>
+            <a href="https://maktabah-maftoohah.github.io/al-quran/?lang=${i18n.currentLang}#surah/${occ.s}/${occ.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
+              ${i18n.t('readAyahBtn')}
+            </a>
+          </div>
+          <div class="concordance-ar">
+            <span class="highlight-target">${occ.ar}</span>
+          </div>
+          ${transText ? `<div class="concordance-ms">"${transText}"</div>` : ''}
+          <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <span>${i18n.t('pronunciation')} <em>${occ.tr}</em></span>
+            <span>${i18n.t('lemma')} <strong style="font-family: var(--font-arabic);">${occ.lemma}</strong></span>
+            <span>${i18n.t('literalTranslation')} <strong>${literalGloss}</strong></span>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   async renderWordDetail(wordRef) {
@@ -476,6 +553,89 @@ class CorpusApp {
         </div>
       </div>
 
+      ${(report.verbForm || report.aspect || report.voice || report.derivation || report.pgn || report.syntaxRole) ? `
+        <div class="section-title-bar" style="margin-top: 1.5rem;">
+          <h3 class="section-title">📐 ${i18n.t('sarfTitle')}</h3>
+        </div>
+        <div class="grammar-grid">
+          ${report.verbForm ? `
+            <div class="grammar-card">
+              <div class="grammar-card-label">${i18n.t('verbFormLabel')}</div>
+              <div class="grammar-card-val" style="color: var(--accent-gold); font-family: var(--font-arabic); font-size: 1.4rem;">
+                ${report.verbForm.pattern_ar} &bull; Form ${report.verbForm.roman}
+              </div>
+              <div class="grammar-card-desc">
+                <strong>${report.verbForm.name}:</strong>
+                <p style="margin-top: 0.25rem;">${report.verbForm.desc}</p>
+              </div>
+            </div>
+          ` : ''}
+
+          ${report.aspect ? `
+            <div class="grammar-card">
+              <div class="grammar-card-label">${i18n.t('aspectLabel')}</div>
+              <div class="grammar-card-val" style="color: var(--accent-emerald);">
+                ${report.aspect.name_ar}
+              </div>
+              <div class="grammar-card-desc">
+                <strong>${report.aspect.name}:</strong>
+                <p style="margin-top: 0.25rem;">${report.aspect.desc}</p>
+              </div>
+            </div>
+          ` : ''}
+
+          ${report.voice ? `
+            <div class="grammar-card">
+              <div class="grammar-card-label">${i18n.t('voiceLabel')}</div>
+              <div class="grammar-card-val" style="color: var(--accent-blue);">
+                ${report.voice.name_ar}
+              </div>
+              <div class="grammar-card-desc">
+                <strong>${report.voice.name}:</strong>
+                <p style="margin-top: 0.25rem;">${report.voice.desc}</p>
+              </div>
+            </div>
+          ` : ''}
+
+          ${report.derivation ? `
+            <div class="grammar-card">
+              <div class="grammar-card-label">${i18n.t('derivationLabel')}</div>
+              <div class="grammar-card-val" style="color: var(--accent-rose); font-family: var(--font-arabic); font-size: 1.3rem;">
+                ${report.derivation.name_ar}
+              </div>
+              <div class="grammar-card-desc">
+                <strong>${report.derivation.name}:</strong>
+                <p style="margin-top: 0.25rem;">${report.derivation.desc}</p>
+              </div>
+            </div>
+          ` : ''}
+
+          ${report.pgn ? `
+            <div class="grammar-card">
+              <div class="grammar-card-label">${i18n.t('pgnLabel')}</div>
+              <div class="grammar-card-val" style="color: #ffffff;">
+                ${report.pgn.name_ar}
+              </div>
+              <div class="grammar-card-desc">
+                <strong>${report.pgn.name}</strong>
+              </div>
+            </div>
+          ` : ''}
+
+          ${report.syntaxRole ? `
+            <div class="grammar-card">
+              <div class="grammar-card-label">${i18n.t('syntaxRoleLabel')}</div>
+              <div class="grammar-card-val" style="color: var(--accent-gold);">
+                ${report.syntaxRole.name_ar}
+              </div>
+              <div class="grammar-card-desc">
+                <strong>${report.syntaxRole.name}</strong>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
+
       ${fullAyahArabic ? `
         <div class="section-title-bar">
           <h3 class="section-title">${i18n.t('fullVerseContext')}</h3>
@@ -503,6 +663,63 @@ class CorpusApp {
     audio.play().catch(e => {
       console.warn('Gagal memainkan audio sebutan:', e);
     });
+  }
+
+  exportRootCsv(rootDetail, translations) {
+    const isEn = i18n.currentLang === 'en';
+    const rows = [
+      ['Surah', 'Ayah', 'WordPosition', 'Arabic', 'Transliteration', 'Lemma', 'Root', 'VerbForm', 'Aspect', 'Voice', 'Case', 'PGN', 'Derivation', 'SyntaxRole', 'WordGloss', 'VerseTranslation']
+    ];
+
+    rootDetail.occurrences.forEach(occ => {
+      const transText = translations?.[String(occ.s)]?.[String(occ.a)] || '';
+      const gloss = isEn && occ.en ? occ.en : (occ.ms || occ.en || '');
+      rows.push([
+        occ.s,
+        occ.a,
+        occ.p,
+        `"${(occ.ar || '').replace(/"/g, '""')}"`,
+        `"${(occ.tr || '').replace(/"/g, '""')}"`,
+        `"${(occ.lemma || '').replace(/"/g, '""')}"`,
+        `"${(rootDetail.root || '').replace(/"/g, '""')}"`,
+        occ.vf || '',
+        occ.asp || '',
+        occ.vox || '',
+        occ.case || '',
+        occ.pgn || '',
+        occ.deriv || '',
+        occ.syntax || '',
+        `"${gloss.replace(/"/g, '""')}"`,
+        `"${transText.replace(/"/g, '""')}"`
+      ]);
+    });
+
+    const csvContent = "\uFEFF" + rows.map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const cleanRoot = rootDetail.root_clean || 'root';
+    const filename = `korpus_akar_${cleanRoot}.csv`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  exportRootJson(rootDetail) {
+    const cleanRoot = rootDetail.root_clean || 'root';
+    const blob = new Blob([JSON.stringify(rootDetail, null, 2)], { type: 'application/json;charset=utf-8;' });
+    const filename = `korpus_akar_${cleanRoot}.json`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   renderSurahsList() {

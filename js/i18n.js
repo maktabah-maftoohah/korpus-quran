@@ -67,7 +67,23 @@ export const translations = {
     revelationMeccan: "Makkiyyah",
     revelationMedinan: "Madaniyyah",
     noRootBase: "Tiada kata dasar (Mabni/Harf)",
-    rootLexiconLink: "🔍 Mu'jam Akar Kata ({root}) →"
+    rootLexiconLink: "🔍 Mu'jam Akar Kata ({root}) →",
+    sarfTitle: "Morfologi & Sarf Lanjutan (Wazan & Tasrif)",
+    verbFormLabel: "Wazan Kata Kerja (Verb Form)",
+    aspectLabel: "Kala Kata Kerja (Aspect / Tense)",
+    voiceLabel: "Ragam Suara (Voice)",
+    moodLabel: "I'rab Kata Kerja (Mood)",
+    pgnLabel: "Sifat Pelaku & Kata Ganti Nama (Dhamir)",
+    derivationLabel: "Bentuk Kata Terbitan (Musytaqqat)",
+    syntaxRoleLabel: "Peranan Sintaksis Khusus",
+    exportCsvBtn: "📥 Eksport CSV",
+    exportJsonBtn: "📥 Eksport JSON",
+    filterAll: "Semua",
+    filterVerbs: "Kata Kerja (Fi'il)",
+    filterNouns: "Kata Nama (Isim)",
+    filterActiveParticiple: "Isim Fa'il",
+    filterPassiveParticiple: "Isim Maf'ul",
+    filterVerbalNoun: "Masdar"
   },
   en: {
     siteTitle: "Maktabah Maftoohah — Quranic Linguistic Corpus",
@@ -132,7 +148,23 @@ export const translations = {
     revelationMeccan: "Meccan",
     revelationMedinan: "Medinan",
     noRootBase: "No root base (Mabni / Particle)",
-    rootLexiconLink: "🔍 Root Lexicon ({root}) →"
+    rootLexiconLink: "🔍 Root Lexicon ({root}) →",
+    sarfTitle: "Advanced Sarf & Morphology (Verb Form & Conjugation)",
+    verbFormLabel: "Verb Pattern & Form (Awzan)",
+    aspectLabel: "Verbal Aspect & Tense",
+    voiceLabel: "Verbal Voice (Ma'lum / Majhul)",
+    moodLabel: "Verbal Mood (I'rab)",
+    pgnLabel: "Person, Gender & Number (PGN)",
+    derivationLabel: "Nominal Derivation (Musytaqqat)",
+    syntaxRoleLabel: "Syntactic Role Feature",
+    exportCsvBtn: "📥 Export CSV",
+    exportJsonBtn: "📥 Export JSON",
+    filterAll: "All",
+    filterVerbs: "Verbs Only",
+    filterNouns: "Nouns Only",
+    filterActiveParticiple: "Active Participle",
+    filterPassiveParticiple: "Passive Participle",
+    filterVerbalNoun: "Verbal Noun"
   }
 };
 
