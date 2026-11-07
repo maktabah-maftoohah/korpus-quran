@@ -82,7 +82,7 @@ async function runTests() {
   }
 
   try {
-    console.log('\n[TEST 1] Memuatkan Laman Utama (Home View)');
+    console.log('\n[TEST 1] Memuatkan Laman Utama (Home View - Malay Default)');
     await page.goto(`http://localhost:${PORT}/index.html#home`, { waitUntil: 'networkidle' });
     const title = await page.title();
     assert(title.includes('Korpus Al-Quran'), `Tajuk dokumen sah: "${title}"`);
@@ -138,14 +138,17 @@ async function runTests() {
     await page.goto(`http://localhost:${PORT}/index.html#surah/1`, { waitUntil: 'networkidle' });
     const surahHeader = await page.$('.section-title');
     const surahHeaderText = await surahHeader.textContent();
-    assert(surahHeaderText.includes('Al-Fatihah') && surahHeaderText.includes('7 Ayat'), 
+    assert(surahHeaderText.includes('Al-Fatihah') && surahHeaderText.toLowerCase().includes('7 ayat'), 
       `Peneroka Surah 1 sah: "${surahHeaderText.trim()}"`);
     assert(!surahHeaderText.includes('undefined'), `Peneroka Surah 1 bebas daripada "undefined"`);
 
-    console.log('\n[TEST 6] Suis Bahasa (MY / EN)');
+    console.log('\n[TEST 6] Suis Bahasa ke Bahasa Inggeris (MY / EN Localization)');
+    await page.goto(`http://localhost:${PORT}/index.html#home`, { waitUntil: 'networkidle' });
     const langBtn = await page.$('#btnLangToggle');
     assert(langBtn !== null, 'Butang pertukaran bahasa wujud');
     await langBtn.click();
+    await page.waitForTimeout(100);
+
     const newLangText = await langBtn.textContent();
     assert(newLangText === 'MY', `Bahasa berjaya ditukar ke Bahasa Inggeris (butang pamer: "${newLangText}")`);
 
@@ -154,6 +157,57 @@ async function runTests() {
     const brandHeading = await page.$('.brand-text h1');
     const brandVal = await brandHeading.textContent();
     assert(brandVal.includes('Quranic Linguistic Corpus'), `Brand tajuk EN tepat: "${brandVal}"`);
+
+    // Check Read Al-Quran button translated
+    const readQuranBtn = await page.$('a[data-i18n="readQuranBtn"]');
+    const readQuranText = await readQuranBtn.textContent();
+    assert(readQuranText.includes('Read Al-Quran'), `Butang header diterjemah: "${readQuranText.trim()}"`);
+
+    // Check Home Section Headings
+    const frequentRootsTitle = await page.$('.section-title');
+    const frequentRootsText = await frequentRootsTitle.textContent();
+    assert(frequentRootsText.includes('Most Frequent Roots'), `Tajuk seksyen diterjemah: "${frequentRootsText.trim()}"`);
+
+    const viewAllLink = await page.$('.section-title-bar a.btn-action');
+    const viewAllText = await viewAllLink.textContent();
+    assert(viewAllText.includes('View All 1,651 Roots'), `Pautan akar kata diterjemah: "${viewAllText.trim()}"`);
+
+    // Check Root Cards in EN
+    const firstRootCard = await page.$('.root-card');
+    const cardBadge = await firstRootCard.$('.root-count-badge');
+    const badgeText = await cardBadge.textContent();
+    assert(badgeText.includes('occurrences'), `Lencana kemunculan dalam EN pamer 'occurrences': "${badgeText.trim()}"`);
+
+    const cardMeanings = await firstRootCard.$('.root-meanings');
+    const meaningsText = await cardMeanings.textContent();
+    assert(meaningsText.toLowerCase().includes('allah') || meaningsText.toLowerCase().includes('god'), 
+      `Makna akar kata terpapar dalam Bahasa Inggeris: "${meaningsText.trim()}"`);
+
+    console.log('\n[TEST 7] Analisis Kalimah & I\'rab dalam Bahasa Inggeris (#word/1:1:1)');
+    await page.goto(`http://localhost:${PORT}/index.html#word/1:1:1`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.grammar-grid');
+
+    const wordGloss = await page.$('.word-gloss-display');
+    const glossText = await wordGloss.textContent();
+    assert(glossText.toLowerCase().includes('name'), `Glos kalimah dalam EN terpapar: "${glossText.trim()}"`);
+
+    const posVal = await page.$('.grammar-card-val');
+    const posValText = await posVal.textContent();
+    assert(posValText.includes('Preposition') || posValText.includes('Noun'), 
+      `Kelas kata (POS) diterjemah dalam EN: "${posValText.trim()}"`);
+
+    const fullVerseTrans = await page.$('.concordance-ms');
+    const fullVerseTransText = await fullVerseTrans.textContent();
+    assert(fullVerseTransText.includes('In the name of Allah'), 
+      `Konteks ayat menggunakan terjemahan Sahih International: "${fullVerseTransText.trim()}"`);
+
+    console.log('\n[TEST 8] Direktori Surah dalam Bahasa Inggeris (#surahs)');
+    await page.goto(`http://localhost:${PORT}/index.html#surahs`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('.root-card');
+    const enSurahCards = await page.$$('.root-card');
+    const firstEnCardText = await enSurahCards[0].textContent();
+    assert(firstEnCardText.includes('verses') && firstEnCardText.includes('Meccan'), 
+      `Kad Surah dalam EN pamer 'verses • Meccan': "${firstEnCardText.replace(/\s+/g, ' ').trim()}"`);
 
     console.log('\n' + '='.repeat(50));
     console.log(`JUMLAH UJIAN: ${passed + failed}`);

@@ -11,7 +11,8 @@ class CorpusStore {
       fullRoots: null,
       morphology: new Map(),
       arabic: new Map(),
-      basmeih: null
+      basmeih: null,
+      sahih: null
     };
   }
 
@@ -69,7 +70,27 @@ class CorpusStore {
     } catch {
       this.cache.basmeih = {};
     }
-    return this.cache.basmeih;
+    return this.cache.basmeih || {};
+  }
+
+  async fetchSahih() {
+    if (this.cache.sahih) return this.cache.sahih;
+    try {
+      const res = await fetch('./data/translations/en/sahih.json');
+      if (res.ok) {
+        this.cache.sahih = await res.json();
+      }
+    } catch {
+      this.cache.sahih = {};
+    }
+    return this.cache.sahih || {};
+  }
+
+  async fetchTranslation(lang = 'ms') {
+    if (lang === 'en') {
+      return this.fetchSahih();
+    }
+    return this.fetchBasmeih();
   }
 
   async getWordToken(surahNum, ayahNum, wordPos) {

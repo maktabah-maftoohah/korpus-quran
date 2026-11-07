@@ -36,6 +36,7 @@ class CorpusApp {
         name_arabic: s.name_arabic || s.arabic || '',
         name_ms: s.name_ms || s.name_latin || '',
         name_latin: s.name_latin || '',
+        name_translation: s.name_translation || '',
         transliteration: s.name_latin || s.transliteration || '',
         total_verses: s.total_ayahs ?? s.total_verses ?? 0,
         total_ayahs: s.total_ayahs ?? s.total_verses ?? 0
@@ -95,7 +96,7 @@ class CorpusApp {
     if (hash === 'home') {
       this.updateNavActive('home');
       this.renderHome();
-    } else if (hash === 'roots') {
+    } else if (hash.startsWith('roots')) {
       this.updateNavActive('roots');
       this.renderRootsView();
     } else if (hash.startsWith('root/')) {
@@ -153,8 +154,8 @@ class CorpusApp {
 
       <section>
         <div class="section-title-bar">
-          <h3 class="section-title">Akar Kata Paling Kerap Digunakan</h3>
-          <a href="#roots" class="btn-action" style="font-size: 0.85rem;">Lihat Semua 1,651 Akar Kata &rarr;</a>
+          <h3 class="section-title">${i18n.t('frequentRoots')}</h3>
+          <a href="#roots" class="btn-action" style="font-size: 0.85rem;">${i18n.t('viewAllRoots')}</a>
         </div>
         <div class="roots-grid">
           ${topRoots.map(r => this.renderRootCardHtml(r)).join('')}
@@ -171,11 +172,14 @@ class CorpusApp {
   }
 
   renderRootCardHtml(r) {
-    const meanings = (r.meanings_ms || []).join(', ') || '—';
+    const isEn = i18n.currentLang === 'en';
+    const meaningsList = isEn && r.meanings_en?.length ? r.meanings_en : (r.meanings_ms || []);
+    const meanings = meaningsList.join(', ') || '—';
+    const countBadge = `${r.count} ${i18n.t('occurrences')}`;
     return `
       <a href="#root/${encodeURIComponent(r.root)}" class="root-card">
         <div class="root-ar">${r.root}</div>
-        <div class="root-count-badge">${r.count} kemunculan</div>
+        <div class="root-count-badge">${countBadge}</div>
         <div class="root-meanings" title="${meanings}">"${meanings}"</div>
       </a>
     `;
@@ -198,7 +202,8 @@ class CorpusApp {
       r.root === query || 
       r.root_clean === clean || 
       r.root_norm === clean ||
-      (r.meanings_ms && r.meanings_ms.some(m => m.toLowerCase().includes(query.toLowerCase())))
+      (r.meanings_ms && r.meanings_ms.some(m => m.toLowerCase().includes(query.toLowerCase()))) ||
+      (r.meanings_en && r.meanings_en.some(m => m.toLowerCase().includes(query.toLowerCase())))
     );
 
     if (foundRoot) {
@@ -219,13 +224,13 @@ class CorpusApp {
         <div>
           <h2 class="section-title">${i18n.t('navRoots')}</h2>
           <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
-            Daftar lengkap 1,651 akar kata Al-Quran dengan makna dan bilangan kemunculan.
+            ${i18n.t('rootDesc')}
           </p>
         </div>
       </div>
 
       <div class="search-wrapper" style="margin: 0 0 1.5rem 0; max-width: 100%;">
-        <input type="text" id="rootFilterInput" class="search-input" placeholder="Tapis akar kata Arab atau makna..." value="${initialQuery}">
+        <input type="text" id="rootFilterInput" class="search-input" placeholder="${i18n.t('filterPlaceholder')}" value="${initialQuery}">
       </div>
 
       <div id="rootsGridTarget" class="roots-grid"></div>
@@ -243,7 +248,8 @@ class CorpusApp {
           r.root.includes(q) ||
           r.root_clean.includes(qClean) ||
           r.root_norm.includes(qClean) ||
-          (r.meanings_ms && r.meanings_ms.some(m => m.toLowerCase().includes(q)))
+          (r.meanings_ms && r.meanings_ms.some(m => m.toLowerCase().includes(q))) ||
+          (r.meanings_en && r.meanings_en.some(m => m.toLowerCase().includes(q)))
         );
       });
 
@@ -259,28 +265,30 @@ class CorpusApp {
   }
 
   async renderRootDetail(rootParam) {
+    const isEn = i18n.currentLang === 'en';
     this.viewContainer.innerHTML = `
       <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
-        Sedang memuatkan konkordans akar kata...
+        ${i18n.t('loadingConcordance')}
       </div>
     `;
 
-    const [rootDetail, basmeih] = await Promise.all([
+    const [rootDetail, translations] = await Promise.all([
       corpusStore.getRootDetails(rootParam),
-      corpusStore.fetchBasmeih()
+      corpusStore.fetchTranslation(i18n.currentLang)
     ]);
 
     if (!rootDetail) {
       this.viewContainer.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem;">
-          <h2 style="color: var(--accent-rose);">Akar Kata Tidak Ditemui</h2>
+          <h2 style="color: var(--accent-rose);">${i18n.t('rootNotFound')}</h2>
           <a href="#roots" class="btn-action" style="margin-top: 1rem;">${i18n.t('backToRoots')}</a>
         </div>
       `;
       return;
     }
 
-    const meanings = (rootDetail.meanings_ms || []).join(', ') || '—';
+    const meaningsList = isEn && rootDetail.meanings_en?.length ? rootDetail.meanings_en : (rootDetail.meanings_ms || []);
+    const meanings = meaningsList.join(', ') || '—';
     const lemmas = (rootDetail.lemmas || []).join(' • ') || '—';
 
     this.viewContainer.innerHTML = `
@@ -293,7 +301,7 @@ class CorpusApp {
         <div class="word-gloss-display">"${meanings}"</div>
         <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
           <span class="root-count-badge" style="font-size: 0.9rem; padding: 0.3rem 0.8rem;">
-            📊 ${rootDetail.count} kemunculan dalam Al-Quran
+            📊 ${rootDetail.count} ${i18n.t('occurrencesInQuran')}
           </span>
         </div>
       </div>
@@ -312,27 +320,28 @@ class CorpusApp {
       <div class="concordance-list">
         ${rootDetail.occurrences.map(occ => {
           const sObj = this.surahs.find(s => (s.number || s.id) === occ.s);
-          const sName = sObj ? (sObj.name_ms || sObj.name_latin || sObj.transliteration) : `Surah ${occ.s}`;
-          const transText = basmeih?.[String(occ.s)]?.[String(occ.a)] || '';
+          const sName = sObj ? (isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin)) : `Surah ${occ.s}`;
+          const transText = translations?.[String(occ.s)]?.[String(occ.a)] || '';
+          const literalGloss = isEn && occ.en ? occ.en : occ.ms;
 
           return `
             <div class="concordance-item">
               <div class="concordance-header">
                 <a href="#word/${occ.s}:${occ.a}:${occ.p}" class="concordance-ref">
-                  ${sName} (${occ.s}:${occ.a}) &bull; Kedudukan Kalimah ${occ.p}
+                  ${sName} (${occ.s}:${occ.a}) &bull; ${i18n.t('wordPosition', { pos: occ.p })}
                 </a>
                 <a href="https://maktabah-maftoohah.github.io/al-quran/#surah/${occ.s}/${occ.a}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
-                  Baca Ayat ↗
+                  ${i18n.t('readAyahBtn')}
                 </a>
               </div>
               <div class="concordance-ar">
                 <span class="highlight-target">${occ.ar}</span>
               </div>
               ${transText ? `<div class="concordance-ms">"${transText}"</div>` : ''}
-              <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 1rem; align-items: center;">
-                <span>Sebutan: <em>${occ.tr}</em></span>
-                <span>Lema: <strong style="font-family: var(--font-arabic);">${occ.lemma}</strong></span>
-                <span>Terjemahan Harfiah: <strong>${occ.ms}</strong></span>
+              <div style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <span>${i18n.t('pronunciation')} <em>${occ.tr}</em></span>
+                <span>${i18n.t('lemma')} <strong style="font-family: var(--font-arabic);">${occ.lemma}</strong></span>
+                <span>${i18n.t('literalTranslation')} <strong>${literalGloss}</strong></span>
               </div>
             </div>
           `;
@@ -342,6 +351,7 @@ class CorpusApp {
   }
 
   async renderWordDetail(wordRef) {
+    const isEn = i18n.currentLang === 'en';
     const parts = wordRef.split(':');
     const s = parseInt(parts[0], 10) || 1;
     const a = parseInt(parts[1], 10) || 1;
@@ -349,43 +359,43 @@ class CorpusApp {
 
     this.viewContainer.innerHTML = `
       <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
-        Sedang menganalisis tatabahasa kalimah...
+        ${i18n.t('analyzingWord')}
       </div>
     `;
 
-    const [token, sObj, arSurah, basmeih] = await Promise.all([
+    const [token, sObj, arSurah, translation] = await Promise.all([
       corpusStore.getWordToken(s, a, p),
       this.surahs.find(item => (item.number || item.id) === s),
       corpusStore.fetchArabicSurah(s),
-      corpusStore.fetchBasmeih()
+      corpusStore.fetchTranslation(i18n.currentLang)
     ]);
 
     if (!token) {
       this.viewContainer.innerHTML = `
         <div style="text-align: center; padding: 3rem 1rem;">
-          <h2 style="color: var(--accent-rose);">Kalimah Tidak Ditemui</h2>
-          <p style="color: var(--text-secondary); margin-top: 0.5rem;">Rujukan: ${s}:${a}:${p}</p>
-          <a href="#home" class="btn-action" style="margin-top: 1rem;">Kembali ke Laman Utama</a>
+          <h2 style="color: var(--accent-rose);">${i18n.t('wordNotFound')}</h2>
+          <p style="color: var(--text-secondary); margin-top: 0.5rem;">${s}:${a}:${p}</p>
+          <a href="#home" class="btn-action" style="margin-top: 1rem;">${i18n.t('backToHome')}</a>
         </div>
       `;
       return;
     }
 
-    const report = generateGrammarReport(token, s, a);
-    const sName = sObj ? (sObj.name_ms || sObj.name_latin || sObj.transliteration) : `Surah ${s}`;
-    const fullAyahArabic = arSurah?.[String(a)]?.uthmani || '';
-    const fullAyahBasmeih = basmeih?.[String(s)]?.[String(a)] || '';
+    const report = generateGrammarReport(token, s, a, i18n.currentLang);
+    const sName = sObj ? (isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin)) : `Surah ${s}`;
+    const fullAyahArabic = arSurah?.ayahs?.[String(a)]?.uthmani || arSurah?.[String(a)]?.uthmani || '';
+    const fullAyahTrans = translation?.[String(s)]?.[String(a)] || '';
 
     this.viewContainer.innerHTML = `
       <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <a href="#surah/${s}" class="btn-action">&larr; Kembali ke ${sName}</a>
-        <span style="font-weight: 700; color: var(--accent-gold);">${sName} (${s}:${a}) &bull; Kalimah #${p}</span>
+        <a href="#surah/${s}" class="btn-action">${i18n.t('backToSurah', { surah: sName })}</a>
+        <span style="font-weight: 700; color: var(--accent-gold);">${sName} (${s}:${a}) &bull; ${i18n.t('wordNumber', { pos: p })}</span>
       </div>
 
       <div class="word-banner-card">
         <div class="word-ar-display">${token.ar}</div>
         <div class="word-tr-display">${token.tr}</div>
-        <div class="word-gloss-display">"${report.gloss_ms}"</div>
+        <div class="word-gloss-display">"${report.gloss}"</div>
 
         <div class="word-actions-row">
           <button class="btn-action btn-primary" onclick="window.corpusApp.playPronounce(${s}, ${a}, ${p})">
@@ -396,7 +406,7 @@ class CorpusApp {
           </a>
           ${token.root ? `
             <a href="#root/${encodeURIComponent(token.root)}" class="btn-action">
-              🔍 Mu'jam Akar Kata (${token.root}) &rarr;
+              ${i18n.t('rootLexiconLink', { root: token.root })}
             </a>
           ` : ''}
         </div>
@@ -413,8 +423,8 @@ class CorpusApp {
           <div class="grammar-card-desc">
             ${report.parsed.map(part => `
               <div style="margin-top: 0.4rem;">
-                <strong style="color: var(--text-primary);">${part.info.name_ar} — ${part.info.name_ms}:</strong>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">${part.info.desc_ms}</p>
+                <strong style="color: var(--text-primary);">${part.info.name_ar} — ${part.info.name}:</strong>
+                <p style="font-size: 0.85rem; color: var(--text-secondary);">${part.info.desc}</p>
               </div>
             `).join('')}
           </div>
@@ -422,10 +432,10 @@ class CorpusApp {
 
         <div class="grammar-card">
           <div class="grammar-card-label">${i18n.t('irabLabel')}</div>
-          <div class="grammar-card-val" style="color: var(--accent-gold);">${report.irabCase.name_ms}</div>
+          <div class="grammar-card-val" style="color: var(--accent-gold);">${report.irabCase.name}</div>
           <div class="grammar-card-desc">
-            <p><strong>Tanda I'rab:</strong> ${report.irabCase.sign_ms}</p>
-            <p style="margin-top: 0.35rem;"><strong>Kedudukan Lazim:</strong> ${report.irabCase.roles_ms}</p>
+            <p><strong>${i18n.t('irabSignLabel')}</strong> ${report.irabCase.sign}</p>
+            <p style="margin-top: 0.35rem;"><strong>${i18n.t('irabRoleLabel')}</strong> ${report.irabCase.roles}</p>
           </div>
         </div>
 
@@ -435,7 +445,7 @@ class CorpusApp {
             ${report.root}
           </div>
           <div class="grammar-card-desc">
-            Akar kata dasar yang menjadi sumber terbitan kalimah ini dalam Bahasa Arab.
+            ${i18n.t('rootLabelDesc')}
           </div>
         </div>
 
@@ -445,22 +455,22 @@ class CorpusApp {
             ${report.lemma}
           </div>
           <div class="grammar-card-desc">
-            Bentuk lema (kata entri kamus) bagi kalimah ini.
+            ${i18n.t('lemmaLabelDesc')}
           </div>
         </div>
       </div>
 
       ${fullAyahArabic ? `
         <div class="section-title-bar">
-          <h3 class="section-title">Konteks Ayat Penuh</h3>
+          <h3 class="section-title">${i18n.t('fullVerseContext')}</h3>
         </div>
         <div class="concordance-item" style="margin-bottom: 2rem;">
           <div class="concordance-ar" style="font-size: 1.8rem;">
             ${fullAyahArabic}
           </div>
-          ${fullAyahBasmeih ? `
+          ${fullAyahTrans ? `
             <div class="concordance-ms" style="font-size: 1.05rem; margin-top: 0.5rem;">
-              "${fullAyahBasmeih}"
+              "${fullAyahTrans}"
             </div>
           ` : ''}
         </div>
@@ -480,12 +490,13 @@ class CorpusApp {
   }
 
   renderSurahsList() {
+    const isEn = i18n.currentLang === 'en';
     this.viewContainer.innerHTML = `
       <div class="section-title-bar">
         <div>
           <h2 class="section-title">${i18n.t('navSurah')}</h2>
           <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem;">
-            Pilih surah untuk meneroka analisis morfologi setiap kalimah secara berurutan.
+            ${i18n.t('surahListSubtitle')}
           </p>
         </div>
       </div>
@@ -494,8 +505,13 @@ class CorpusApp {
         ${this.surahs.map(s => {
           const sNum = s.number || s.id;
           const sArabic = s.name_arabic || s.arabic || '';
-          const sName = s.name_ms || s.name_latin || s.transliteration || `Surah ${sNum}`;
+          const sName = isEn ? (s.name_latin || s.name_ms) : (s.name_ms || s.name_latin || `Surah ${sNum}`);
+          const sSub = isEn && s.name_translation ? `(${s.name_translation})` : (s.translation_ms ? `(${s.translation_ms})` : '');
           const sVerses = s.total_ayahs || s.total_verses || 0;
+          const revType = isEn 
+            ? (s.revelation_type || 'Meccan')
+            : (s.revelation_type === 'Medinan' ? i18n.t('revelationMedinan') : i18n.t('revelationMeccan'));
+
           return `
           <a href="#surah/${sNum}" class="root-card">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -503,10 +519,10 @@ class CorpusApp {
               <span class="root-ar" style="font-size: 1.5rem;">${sArabic}</span>
             </div>
             <div style="font-weight: 600; color: #ffffff; margin-top: 0.4rem;">
-              ${sName}
+              ${sName} <span style="font-size: 0.8rem; font-weight: normal; color: var(--text-muted);">${sSub}</span>
             </div>
             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
-              ${sVerses} ayat &bull; ${s.revelation_type || ''}
+              ${i18n.t('versesCount', { count: sVerses })} &bull; ${revType}
             </div>
           </a>
         `;}).join('')}
@@ -515,14 +531,15 @@ class CorpusApp {
   }
 
   async renderSurahExplorer(sNum) {
+    const isEn = i18n.currentLang === 'en';
     const sObj = this.surahs.find(s => (s.number || s.id) === sNum) || {};
-    const sName = sObj.name_ms || sObj.name_latin || sObj.transliteration || `Surah ${sNum}`;
+    const sName = isEn ? (sObj.name_latin || sObj.name_ms) : (sObj.name_ms || sObj.name_latin || `Surah ${sNum}`);
     const sArabic = sObj.name_arabic || sObj.arabic || '';
     const sVerses = sObj.total_ayahs || sObj.total_verses || 0;
 
     this.viewContainer.innerHTML = `
       <div style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
-        Sedang memuatkan senarai kalimah ${sName}...
+        ${i18n.t('loadingSurahWords', { surah: sName })}
       </div>
     `;
 
@@ -530,27 +547,29 @@ class CorpusApp {
 
     this.viewContainer.innerHTML = `
       <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-        <a href="#surahs" class="btn-action">&larr; Kembali ke Daftar Surah</a>
-        <h2 class="section-title">${sName} ${sArabic ? `(${sArabic})` : ''} &bull; ${sVerses} Ayat</h2>
+        <a href="#surahs" class="btn-action">${i18n.t('backToSurahList')}</a>
+        <h2 class="section-title">${sName} ${sArabic ? `(${sArabic})` : ''} &bull; ${i18n.t('versesCount', { count: sVerses })}</h2>
       </div>
 
       <div style="display: flex; flex-direction: column; gap: 1.5rem;">
         ${Object.entries(morph.ayahs || {}).map(([aStr, tokens]) => `
           <div class="concordance-item">
             <div class="concordance-header">
-              <span style="font-weight: 700; color: var(--accent-gold);">Ayat ${aStr}</span>
+              <span style="font-weight: 700; color: var(--accent-gold);">${i18n.t('verseBadge', { ayah: aStr })}</span>
               <a href="https://maktabah-maftoohah.github.io/al-quran/#surah/${sNum}/${aStr}" target="_blank" rel="noopener noreferrer" class="btn-action" style="font-size: 0.75rem; padding: 0.2rem 0.5rem;">
-                Buka di Al-Quran ↗
+                ${i18n.t('openInQuranApp')}
               </a>
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; direction: rtl; justify-content: flex-start; padding: 0.5rem 0;">
-              ${tokens.map(t => `
+              ${tokens.map(t => {
+                const gloss = isEn ? (t.en || t.ms || '') : (t.ms || t.en || '');
+                return `
                 <a href="#word/${sNum}:${aStr}:${t.pos}" class="root-card" style="padding: 0.6rem 0.8rem; min-width: 90px; text-align: center; direction: ltr;">
                   <div style="font-family: var(--font-arabic); font-size: 1.4rem; color: var(--accent-gold);">${t.ar}</div>
                   <div style="font-size: 0.75rem; color: var(--accent-blue); font-style: italic;">${t.tr}</div>
-                  <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.1rem;">"${t.ms || t.en || ''}"</div>
+                  <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.1rem;">"${gloss}"</div>
                 </a>
-              `).join('')}
+              `;}).join('')}
             </div>
           </div>
         `).join('')}

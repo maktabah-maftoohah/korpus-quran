@@ -33,7 +33,10 @@ def main():
         json.dump(surahs, f, ensure_ascii=False, indent=2)
     print(f"Copied {len(surahs)} surahs to {surahs_dest}")
 
-    # 2. Copy Basmeih translation
+    # 2. Copy Basmeih (MS) and Sahih (EN) translations
+    (data_dir / "translations" / "ms").mkdir(parents=True, exist_ok=True)
+    (data_dir / "translations" / "en").mkdir(parents=True, exist_ok=True)
+
     basmeih_src = SRC_DIR / "data" / "translations" / "ms" / "basmeih.json"
     basmeih_dest = data_dir / "translations" / "ms" / "basmeih.json"
     with open(basmeih_src, "r", encoding="utf-8") as f:
@@ -41,6 +44,15 @@ def main():
     with open(basmeih_dest, "w", encoding="utf-8") as f:
         json.dump(basmeih, f, ensure_ascii=False)
     print("Copied Basmeih translation for concordance display.")
+
+    sahih_src = SRC_DIR / "data" / "translations" / "en" / "sahih.json"
+    sahih_dest = data_dir / "translations" / "en" / "sahih.json"
+    if sahih_src.exists():
+        with open(sahih_src, "r", encoding="utf-8") as f:
+            sahih = json.load(f)
+        with open(sahih_dest, "w", encoding="utf-8") as f:
+            json.dump(sahih, f, ensure_ascii=False)
+        print("Copied Sahih International translation for English concordance display.")
 
     # 2b. Copy Arabic Uthmani text
     for s_num in range(1, 115):
@@ -102,6 +114,7 @@ def main():
                         "tr": t.get("tr", ""),
                         "lemma": t.get("lemma", ""),
                         "ms": ms_val or "",
+                        "en": t.get("en", "") or "",
                         "pos_tag": t.get("pos_tag", "")
                     })
 
@@ -142,6 +155,7 @@ def main():
             "count": r["count"],
             "lemmas": r["lemmas"][:8],
             "meanings_ms": r["meanings_ms"][:5],
+            "meanings_en": r["meanings_en"][:5],
             "sample": r["occurrences"][0] if r["occurrences"] else None
         })
 
