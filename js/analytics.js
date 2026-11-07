@@ -11,7 +11,7 @@
  */
 
 // Google Tag Manager Container ID
-const DEFAULT_CONTAINER_ID = 'GTM-KDFDGX45';
+const DEFAULT_CONTAINER_ID = 'GTM-NGTG26SD';
 
 class AnalyticsService {
   constructor() {
