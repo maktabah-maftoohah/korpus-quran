@@ -7,6 +7,7 @@ import { corpusStore } from './store.js';
 import { generateGrammarReport } from './grammar.js';
 import { i18n } from './i18n.js';
 import { SEMANTIC_THEMES } from './themes.js';
+import { analytics } from './analytics.js';
 
 class CorpusApp {
   constructor() {
@@ -44,6 +45,7 @@ class CorpusApp {
       }));
       this.rootsIndex = rootsIdx;
 
+      analytics.init();
       window.addEventListener('hashchange', () => this.handleRouting());
       this.handleRouting();
     } catch (err) {
@@ -151,6 +153,7 @@ class CorpusApp {
     } else {
       this.renderHome();
     }
+    analytics.trackPageView(window.location.pathname + (window.location.hash || '#home'), document.title);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
@@ -357,6 +360,7 @@ class CorpusApp {
       return;
     }
 
+    analytics.trackRootSearch(rootDetail.root_arabic, rootDetail.total_occurrences || rootDetail.occurrences?.length || 0);
     const meaningsList = isEn && rootDetail.meanings_en?.length ? rootDetail.meanings_en : (rootDetail.meanings_ms || []);
     const meanings = meaningsList.join(', ') || '—';
     const lemmas = (rootDetail.lemmas || []).join(' • ') || '—';
