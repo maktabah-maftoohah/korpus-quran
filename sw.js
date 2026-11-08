@@ -1,5 +1,5 @@
 // Service Worker for Maktabah Maftoohah Korpus Al-Quran
-const CACHE_NAME = 'korpus-quran-v6';
+const CACHE_NAME = 'korpus-quran-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
